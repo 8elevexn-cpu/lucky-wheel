@@ -239,11 +239,28 @@ body > main { max-width:1200px;padding:16px; }
 #textMenu input[type=color] { width:100%;height:40px;background:#020617;border:1px solid #334155;border-radius:8px; }
 #textMenu button { min-height:40px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:13px; }
 
-/* v3.9：小手機版面精簡（不改任何功能）。
-   四個下拉（轉盤／配色／抽獎方式／音效）併成同一列、變窄、標籤隱藏；
-   按鈕（文字／試聽／紀錄／退出）一列；避開狀態列與導覽列。 */
+/* v3.10：小手機版面再精簡（不改任何功能）。
+   - 標題列：隱藏副標題，轉盤／轉盤管理／全螢幕鈕併成同一列
+   - 隱藏「目前轉盤／風格」資訊列（標題與選單已顯示）
+   - 四個下拉併成一列、標籤隱藏；文字／試聽／紀錄一列
+   - 「文字」設定在一般畫面也能使用 */
+#textMenu { display:block; }
 @media (max-width:639px) {
-  body > header { padding-top:max(12px,env(safe-area-inset-top,0px)); }
+  body > header { padding:max(8px,env(safe-area-inset-top,0px)) 12px 8px;gap:6px;flex-wrap:wrap; }
+  body > header > div:first-child { flex:1 1 100%; }
+  body > header > div:first-child > div:first-child { width:32px;height:32px;font-size:16px;border-radius:10px; }
+  body > header > div:first-child p { display:none; }
+  body > header .app-pages { flex:1 1 0;width:auto;min-width:0;gap:6px; }
+  body > header .app-pages button { min-height:38px;padding:6px 10px;font-size:14px; }
+  body > header > div:last-child { width:auto;flex:0 0 auto; }
+  body > header > div:last-child > div { flex:none; }
+  body > header #fullscreenBtn { min-width:38px;min-height:38px;padding:0;justify-content:center; }
+
+  body > main { padding:8px;gap:8px; }
+  #wheelSection:not(.fullscreen-active) { padding:10px; }
+  #wheelSection > div:has(> div > #activeWheelBadge) { display:none !important; }
+  #wheelSection:not(.fullscreen-active) #wheelContainer { margin-top:28px; }
+
   #liveBar { flex-wrap:wrap;align-items:stretch;gap:6px; }
   #liveControls {
     flex:1 1 100%;display:grid;grid-template-columns:1.3fr 1fr 1.1fr 1fr;
@@ -252,7 +269,6 @@ body > main { max-width:1200px;padding:16px; }
   #liveControls .live-field,
   #liveControls .wheel-field,
   #liveControls .live-field:last-child { display:block;flex:none;min-width:0;margin:0; }
-  /* 標籤只留給讀屏程式，不佔版面 */
   #liveControls .live-field > span {
     position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;
   }
@@ -969,16 +985,28 @@ body > main { max-width:1200px;padding:16px; }
                 const maxChars = numOptions > 16 ? 10 : 16;
                 if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
                 // Keep long names inside the available radial space and narrow segments.
-                let labelSize = wheelTextStyle.size || Math.min(fontSize + (isWinner ? 4 : 0),
-                    numOptions <= 2 ? 36 : Math.max(8, 2 * radius * 0.60 * Math.sin(arcSize / 2) - 4));
                 const maxWidth = radius * 0.83 - 72;
-                ctx.font = `900 ${labelSize}px Inter, "Noto Sans TC", sans-serif`;
-                while (labelSize > 8 && ctx.measureText(text).width > maxWidth) {
-                    labelSize -= 0.5;
+                let labelSize;
+                let drawText = text;
+                if (wheelTextStyle.size) {
+                    // 使用者指定字級：照指定大小畫，名字太長就以「…」縮短，字不再被自動縮小
+                    labelSize = wheelTextStyle.size;
                     ctx.font = `900 ${labelSize}px Inter, "Noto Sans TC", sans-serif`;
+                    while (drawText.length > 1 && ctx.measureText(drawText).width > maxWidth) {
+                        drawText = drawText.replace(/…$/, '').slice(0, -1) + '…';
+                    }
+                } else {
+                    // 自動字級：依扇形與名字長度自動縮放
+                    labelSize = Math.min(fontSize + (isWinner ? 4 : 0),
+                        numOptions <= 2 ? 36 : Math.max(8, 2 * radius * 0.60 * Math.sin(arcSize / 2) - 4));
+                    ctx.font = `900 ${labelSize}px Inter, "Noto Sans TC", sans-serif`;
+                    while (labelSize > 8 && ctx.measureText(text).width > maxWidth) {
+                        labelSize -= 0.5;
+                        ctx.font = `900 ${labelSize}px Inter, "Noto Sans TC", sans-serif`;
+                    }
                 }
                 ctx.fillStyle = textColor;
-                ctx.fillText(text, radius * 0.83, 0, maxWidth);
+                ctx.fillText(drawText, radius * 0.83, 0, maxWidth);
                 ctx.restore();
             }
 
@@ -1550,7 +1578,7 @@ body > main { max-width:1200px;padding:16px; }
 <script>
 (() => {
  const menu=document.createElement('details');menu.id='textMenu';
- menu.innerHTML='<summary>文字 ▾</summary><div class="text-popover"><label>字級<select id="textSizeSelect"><option value="auto">自動（稍大）</option><option value="18">18</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="36">36</option><option value="40">40</option><option value="48">48</option><option value="custom">自訂大小…</option></select><input id="labelFontSize" hidden type="number" min="8" max="96" inputmode="numeric" placeholder="輸入字級" aria-label="自訂轉盤字級"></label><label>字色<select id="textColorSelect"><option value="#ffffff">白色</option><option value="#000000">黑色</option><option value="#facc15">黃色</option><option value="#22c55e">綠色</option><option value="#ef4444">紅色</option><option value="#3b82f6">藍色</option><option value="custom">自訂顏色…</option></select><input id="labelFontColor" hidden type="color" aria-label="自訂轉盤字色"></label><button type="button" id="finishTextSettings">完成</button></div>';
+ menu.innerHTML='<summary>文字 ▾</summary><div class="text-popover"><label>字級<select id="textSizeSelect"><option value="auto">自動（稍大）</option><option value="18">18</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="36">36</option><option value="40">40</option><option value="48">48</option><option value="56">56</option><option value="64">64</option><option value="custom">自訂大小…</option></select><input id="labelFontSize" hidden type="number" min="8" max="96" inputmode="numeric" placeholder="輸入字級" aria-label="自訂轉盤字級"></label><label>字色<select id="textColorSelect"><option value="#ffffff">白色</option><option value="#000000">黑色</option><option value="#facc15">黃色</option><option value="#22c55e">綠色</option><option value="#ef4444">紅色</option><option value="#3b82f6">藍色</option><option value="custom">自訂顏色…</option></select><input id="labelFontColor" hidden type="color" aria-label="自訂轉盤字色"></label><button type="button" id="finishTextSettings">完成</button></div>';
  document.getElementById('liveBar').insertBefore(menu,document.getElementById('previewSoundBtn'));
  const sizes=menu.querySelector('#textSizeSelect'),colors=menu.querySelector('#textColorSelect'),size=menu.querySelector('#labelFontSize'),color=menu.querySelector('#labelFontColor');
  size.value=wheelTextStyle.size??32;color.value=wheelTextStyle.color;
