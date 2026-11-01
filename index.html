@@ -116,7 +116,8 @@
         #wheelSection > .fullscreen-hide { max-width: 100%; }
         #latestWinnerBanner { gap: 16px; text-align: left; }
         #latestWinnerName { min-width: 0; }
-        #spinBtn { animation: none; box-shadow: 0 4px 16px rgba(245,158,11,.2); }
+        #spinBtn { animation: pulse-glow 2.2s infinite; } /* 恢復發光脈動 */
+        #spinBtn:disabled { animation: none; box-shadow: 0 4px 16px rgba(245,158,11,.2); }
         .wheel-shadow { filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); }
         main > section + section { padding: 24px; }
         main > section + section > div { margin-top: 0 !important; }
@@ -238,25 +239,33 @@ body > main { max-width:1200px;padding:16px; }
 #textMenu input[type=color] { width:100%;height:40px;background:#020617;border:1px solid #334155;border-radius:8px; }
 #textMenu button { min-height:40px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:13px; }
 
-/* v3.8：小手機版面修正（不改任何功能）。
-   設定列在小螢幕改成「一項一列」的單欄，標籤在左、選單在右，精簡不擠；
-   按鈕（文字／試聽／紀錄／退出）排成一列；避開狀態列與導覽列。 */
+/* v3.9：小手機版面精簡（不改任何功能）。
+   四個下拉（轉盤／配色／抽獎方式／音效）併成同一列、變窄、標籤隱藏；
+   按鈕（文字／試聽／紀錄／退出）一列；避開狀態列與導覽列。 */
 @media (max-width:639px) {
   body > header { padding-top:max(12px,env(safe-area-inset-top,0px)); }
   #liveBar { flex-wrap:wrap;align-items:stretch;gap:6px; }
   #liveControls {
-    flex:1 1 100%;display:flex;flex-direction:column;align-items:stretch;
-    gap:6px;overflow:visible;padding:0;
+    flex:1 1 100%;display:grid;grid-template-columns:1.3fr 1fr 1.1fr 1fr;
+    align-items:stretch;gap:4px;overflow:visible;padding:0;
   }
   #liveControls .live-field,
   #liveControls .wheel-field,
-  #liveControls .live-field:last-child {
-    flex:none;min-width:0;flex-direction:row;align-items:center;gap:8px;
+  #liveControls .live-field:last-child { display:block;flex:none;min-width:0;margin:0; }
+  /* 標籤只留給讀屏程式，不佔版面 */
+  #liveControls .live-field > span {
+    position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;
   }
-  #liveControls .live-field > span { flex:0 0 4.5em;font-size:12px; }
-  #liveControls select { flex:1;min-width:0;min-height:36px;padding:6px 8px;font-size:13px; }
+  #liveControls select {
+    -webkit-appearance:none;appearance:none;width:100%;min-width:0;min-height:36px;
+    padding:6px 15px 6px 6px;font-size:12px;font-weight:600;border-radius:8px;
+    text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
+    background-image:linear-gradient(45deg,transparent 50%,#94a3b8 50%),linear-gradient(135deg,#94a3b8 50%,transparent 50%);
+    background-position:calc(100% - 9px) 50%,calc(100% - 5px) 50%;
+    background-size:4px 4px,4px 4px;background-repeat:no-repeat;
+  }
   #liveBar > button,#liveBar > details { flex:1 1 0;margin:0;align-self:stretch; }
-  #liveBar > details > summary,#liveBar > button { min-height:38px;padding:8px 6px;font-size:12px;text-align:center;white-space:nowrap; }
+  #liveBar > details > summary,#liveBar > button { min-height:36px;padding:7px 4px;font-size:12px;text-align:center;white-space:nowrap; }
   #liveBar #simExitFullscreenBtn { margin-top:0;flex:0 0 44px; }
   #textMenu .text-popover { left:0;right:auto; }
 
@@ -266,7 +275,7 @@ body > main { max-width:1200px;padding:16px; }
   }
   .fullscreen-active #liveBar { margin-bottom:0; }
   #wheelSection.fullscreen-active #wheelContainer {
-    width:min(94vw,calc(100dvh - 390px)) !important;height:min(94vw,calc(100dvh - 390px)) !important;
+    width:min(94vw,calc(100dvh - 260px)) !important;height:min(94vw,calc(100dvh - 260px)) !important;
     margin-top:auto !important;margin-bottom:auto !important;
   }
   #wheelSection.fullscreen-active #spinBtn { margin-bottom:calc(env(safe-area-inset-bottom,0px) + 44px) !important; }
