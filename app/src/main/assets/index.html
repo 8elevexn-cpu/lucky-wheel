@@ -296,6 +296,30 @@ body > main { max-width:1200px;padding:16px; }
   }
   #wheelSection.fullscreen-active #spinBtn { margin-bottom:calc(env(safe-area-inset-bottom,0px) + 44px) !important; }
 }
+
+/* 平板直向全螢幕：退出按鈕只保留圖示，避免擠壓控制列。 */
+@media (min-width: 640px) and (max-width: 1024px) and (orientation: portrait) {
+  #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn {
+    flex: 0 0 40px !important;
+    width: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    font-size: 0 !important;
+  }
+  #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn span {
+    display: none !important;
+  }
+  #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn i {
+    margin: 0 !important;
+    font-size: 16px !important;
+  }
+}
+
 </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-full flex flex-col selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden">
