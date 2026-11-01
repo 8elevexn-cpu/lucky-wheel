@@ -16,3 +16,6 @@
 
 沒設定時仍可編譯，但會用 debug 金鑰，無法覆蓋舊版。
 **金鑰檔與密碼絕對不要放進儲存庫。**
+
+## 網頁版
+根目錄的 `index.html` 就是網頁版（GitHub Pages）；`app/src/main/assets/index.html` 是打包進 APK 的同一份，改畫面時兩邊都要換。
