@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+def ksFile = System.getenv('KEYSTORE_FILE')
+
+android {
+    namespace 'tw.lucky.wheel'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'tw.lucky.wheel'
+        minSdk 26
+        targetSdk 35
+        versionCode 4
+        versionName '1.0.3'
+    }
+
+    signingConfigs {
+        if (ksFile) {
+            release {
+                storeFile file(ksFile)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS') ?: 'lucky-wheel'
+                keyPassword System.getenv('KEY_PASSWORD') ?: System.getenv('KEYSTORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // 沒有設定金鑰時，改用 debug 金鑰簽名（可安裝，但不能覆蓋舊版）
+            signingConfig ksFile ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
