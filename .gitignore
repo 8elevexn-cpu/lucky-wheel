@@ -1,0 +1,7 @@
+*.jks
+*.keystore
+signing-password*.txt
+私密備份*
+.gradle/
+build/
+local.properties
