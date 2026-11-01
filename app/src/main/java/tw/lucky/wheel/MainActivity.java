@@ -63,8 +63,14 @@ public class MainActivity extends Activity {
                 r = insets.getSystemWindowInsetRight();
                 b = insets.getSystemWindowInsetBottom();
             }
+            // Android 15 強制邊到邊顯示：若系統沒回報頂部高度，退而使用狀態列高度，避免內容貼到時間列
+            if (t == 0 && Build.VERSION.SDK_INT >= 35) {
+                int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+                if (id > 0) t = getResources().getDimensionPixelSize(id);
+            }
             v.setPadding(l, t, r, b);
-            return WindowInsets.CONSUMED;
+            if (Build.VERSION.SDK_INT >= 30) return WindowInsets.CONSUMED;
+            return insets.consumeSystemWindowInsets();
         });
 
         webView = new WebView(this);
