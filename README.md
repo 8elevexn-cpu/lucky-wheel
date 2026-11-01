@@ -1,6 +1,6 @@
 # 幸運轉盤 APK 專案
 
-- 套件名稱：`tw.lucky.wheel`　版本：versionCode 4／1.0.3
+- 套件名稱：`tw.lucky.wheel`　版本：versionCode 5／1.0.4
 - 網頁內容在 `app/src/main/assets/index.html`，之後要改畫面，換掉這個檔案再推上去即可。
 - 推上 `main` 分支後，GitHub Actions 會自動編譯，完成後到 **Actions → 最新一次 → Artifacts** 下載 `lucky-wheel-apk`。
 
