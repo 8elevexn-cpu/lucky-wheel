@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>幸運大轉盤抽獎系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <!-- Inter & Outfit Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-outfit {
+            font-family: 'Outfit', sans-serif;
+        }
+        .wheel-shadow {
+            filter: drop-shadow(0px 15px 30px rgba(0, 0, 0, 0.65));
+        }
+        .pointer-shadow {
+            filter: drop-shadow(0px 6px 12px rgba(239, 68, 68, 0.6));
+        }
+        textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), 0 0 40px rgba(245, 158, 11, 0.2); }
+            50% { box-shadow: 0 0 35px rgba(245, 158, 11, 0.9), 0 0 60px rgba(245, 158, 11, 0.5); }
+        }
+        .glow-btn {
+            animation: pulse-glow 2.2s infinite;
+        }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.8) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop-in {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        /* Pointer physics tick animation */
+        .pointer-flick {
+            transform: translateX(-50%) rotate(-18deg) scale(1.08) !important;
+            transition: transform 0.05s ease-out;
+        }
+        .pointer-rest {
+            transform: translateX(-50%) rotate(0deg) scale(1) !important;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Glassmorphism panel effect */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Fullscreen Wheel Mode Optimization */
+        .fullscreen-active {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 50 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: #020617 !important;
+            padding: 1rem 1.5rem 2rem 1.5rem !important;
+            border-radius: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            overflow: hidden !important;
+            border: none !important;
+        }
+
+        .fullscreen-active .fullscreen-hide {
+            display: none !important;
+        }
+
+        .fullscreen-active #wheelContainer {
+            width: min(75vh, 90vw) !important;
+            height: min(75vh, 90vw) !important;
+            max-width: none !important;
+            margin-top: auto !important;
+            margin-bottom: auto !important;
+        }
+
+        .fullscreen-active #spinBtn {
+            font-size: 1.5rem !important;
+            padding: 1rem 3.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        /* 排版整理 2026-10-04 14:35（台灣）：僅調整外觀，保留全部功能。 */
+        body { line-height: 1.55; }
+        body > header { padding: 16px 24px; gap: 16px; }
+        body > main { max-width: 1280px; padding: 24px; gap: 24px; }
+        main > section { min-width: 0; border-radius: 20px !important; box-shadow: 0 8px 24px rgba(0,0,0,.18) !important; }
+        .glass-panel { background: #0f172a; }
+        #wheelSection:not(.fullscreen-active) { padding: 28px; min-height: 0; }
+        #wheelSection:not(.fullscreen-active) #wheelContainer { margin: 30px 0 18px; max-width: 480px; }
+        #wheelSection > .fullscreen-hide { max-width: 100%; }
+        #latestWinnerBanner { gap: 16px; text-align: left; }
+        #latestWinnerName { min-width: 0; }
+        #spinBtn { animation: none; box-shadow: 0 4px 16px rgba(245,158,11,.2); }
+        .wheel-shadow { filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); }
+        main > section + section { padding: 24px; }
+        main > section + section > div { margin-top: 0 !important; }
+        main > section + section > div + div { padding-top: 20px; margin-top: 20px !important; border-top: 1px solid #263247; }
+        main > section + section > div:first-child { padding: 16px; border-radius: 14px; }
+        main > section + section > div:first-child > div:first-child { flex-direction: column; align-items: stretch; gap: 12px; }
+        main > section + section > div:first-child > div:first-child > div { display: grid; grid-template-columns: 1fr 1fr 1.5fr 44px; gap: 8px; }
+        main > section + section label, main > section + section span.text-xs { font-size: 13px; letter-spacing: 0; }
+        main > section + section input[type=text], main > section + section select, main > section + section textarea { font-size: 14px; line-height: 1.6; border-radius: 10px; }
+        main > section + section select, main > section + section input[type=text] { min-height: 44px; padding: 10px 12px; }
+        main > section + section button { min-height: 40px; font-size: 13px; justify-content: center; white-space: nowrap; }
+        #clearItemsBtn, #clearHistoryBtn { min-height: 32px; }
+        #itemsInput { min-height: 180px; padding: 12px; }
+        #itemsInput + button { min-height: 44px; }
+        #historyList { max-height: 160px; padding: 12px; font-size: 13px; }
+        #soundSelect { min-width: 0; }
+        #uploadAudioBtn { flex-shrink: 0; }
+        select option { background: #0f172a; color: #e2e8f0; }
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; }
+        @media (min-width: 1024px) {
+            body > main { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+            main > section { grid-column: auto !important; }
+        }
+        @media (max-width: 639px) {
+            body > header { padding: 12px 16px; }
+            body > header > div:last-child { width: 100%; justify-content: space-between; }
+            body > header > div:last-child > div { flex: 1; min-width: 0; }
+            #headerWheelSelect { flex: 1; min-width: 0; max-width: none; min-height: 36px; font-size: 13px; }
+            #fullscreenBtn { min-width: 44px; min-height: 44px; justify-content: center; }
+            body > main { padding: 16px; gap: 16px; }
+            #wheelSection:not(.fullscreen-active), main > section + section { padding: 18px; }
+            #wheelSection:not(.fullscreen-active) #wheelContainer { margin-top: 32px; }
+            #latestWinnerBanner { flex-wrap: wrap; gap: 6px; }
+            #latestWinnerName { max-width: 100%; }
+            main > section + section > div:first-child { padding: 12px; }
+            main > section + section > div:first-child > div:first-child > div { grid-template-columns: 1fr 1fr 1.4fr 40px; gap: 6px; }
+            main > section + section > div:first-child button { padding-left: 6px; padding-right: 6px; font-size: 12px; }
+            main > section + section label.cursor-pointer { padding: 12px 10px; gap: 8px; }
+            main > section + section label.cursor-pointer .text-slate-500 { font-size: 11px; }
+            label[for=itemsInput] { max-width: 72%; }
+        }
+    
+/* v3｜2026-10-04 15:04 台灣｜即時設定列與集中轉盤管理 */
+[hidden] { display:none !important; }
+body > main { display:flex !important;flex-direction:column;max-width:1000px; }
+body > main > section { width:100%; }
+.app-pages { display:flex;gap:8px; }
+.app-pages button { min-height:44px;padding:10px 16px;border:1px solid #334155;border-radius:10px;background:#1e293b;color:#cbd5e1;font-size:14px;font-weight:700; }
+.app-pages button[aria-pressed=true] { background:#f59e0b;color:#0f172a;border-color:#f59e0b; }
+#liveBar { width:100%;display:flex;align-items:center;gap:8px;flex-shrink:0;position:relative;z-index:31;margin-bottom:12px; }
+#liveControls { display:flex;align-items:end;gap:8px;flex:1;min-width:0;overflow-x:auto;padding:3px 2px 8px; }
+.live-field { display:flex;flex-direction:column;gap:4px;flex:1;min-width:115px; }
+.live-field > span { font-size:11px;color:#94a3b8;white-space:nowrap; }
+#liveControls select { min-height:40px;width:100%;max-width:none;margin:0;padding:8px 10px;background:#020617;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:13px;font-weight:600; }
+#liveControls .wheel-field { min-width:150px;flex:1.4; }
+#liveBar #simExitFullscreenBtn { position:static !important;flex-shrink:0;margin-top:18px;min-height:40px; }
+#liveBar #uploadAudioBtn { flex-shrink:0;align-self:end;margin-bottom:8px; }
+#drawModeSource { display:none !important; }
+#historyMenu { position:relative;flex-shrink:0;align-self:end;margin-bottom:8px; }
+#historyMenu > summary { cursor:pointer;min-height:40px;padding:9px 12px;border:1px solid #334155;border-radius:9px;font-size:13px;background:#1e293b;list-style:none; }
+#historyMenu > div { position:absolute;top:48px;right:0;width:min(320px,78vw);padding:14px;background:#0f172a;border:1px solid #475569;border-radius:12px;box-shadow:0 12px 32px #0008; }
+#historyList { max-height:25vh; }
+#managerPage { padding:24px; }
+#managerPage > div { margin:0 !important;border:0;padding:0; }
+#managerPage > div + div { padding-top:20px;margin-top:20px !important;border-top:1px solid #263247; }
+#manageTop { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center; }
+#manageActions { grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap; }
+#manageTop select, #managerPage input[type=text], #managerPage textarea { width:100%;min-width:0;min-height:44px;font-size:14px;line-height:1.6;padding:12px; }
+#managerPage button { min-height:44px;justify-content:center;font-size:13px;white-space:nowrap; }
+#managerPage label { font-size:14px; }
+#managerPage #itemsInput { min-height:260px; }
+#managerPage #deleteWheelBtn { margin-top:12px; }
+#managerPage .version-info { font-size:12px;color:#94a3b8;line-height:1.8; }
+#wheelSection.fullscreen-active { padding:12px 16px 18px !important;height:100dvh !important; }
+.fullscreen-active #wheelContainer { width:min(64vh,86vw,calc(100dvh - 180px)) !important;height:min(64vh,86vw,calc(100dvh - 180px)) !important;flex-shrink:0; }
+.fullscreen-active #spinBtn { padding:12px 32px !important;font-size:20px !important;flex-shrink:0; }
+@media(max-width:639px) { #wheelSection:not(.fullscreen-active),#managerPage { padding:16px; } body > header { flex-wrap:wrap; } .app-pages { width:100%; } .app-pages button { flex:1; } #manageTop { grid-template-columns:minmax(0,1fr) auto; } #manageTop button { padding:10px; } #liveBar { gap:6px; } #historyMenu > summary { padding:9px 8px; } #liveBar #simExitFullscreenBtn span { display:none; } #liveBar #simExitFullscreenBtn { padding:10px; } }
+
+/* 放大獨立轉盤頁，配合螢幕高度保留控制列與抽獎鍵。 */
+body > main { max-width:1200px;padding:16px; }
+#wheelSection:not(.fullscreen-active) { padding:16px 20px; }
+#wheelSection:not(.fullscreen-active) #wheelContainer { width:min(100%,780px,max(240px,calc(100dvh - 280px)));max-width:none;margin:26px 0 12px;flex-shrink:0; }
+#wheelSection #latestWinnerBanner { max-width:780px; }
+#wheelSection > div.fullscreen-hide:first-of-type { padding-top:6px;padding-bottom:6px; }
+#wheelSection.fullscreen-active #wheelContainer { width:min(92vw,calc(100dvh - 156px)) !important;height:min(92vw,calc(100dvh - 156px)) !important; }
+@media(max-height:500px) { #wheelSection.fullscreen-active { padding:6px 12px !important; } .fullscreen-active #liveBar { margin-bottom:0; } #wheelSection.fullscreen-active #wheelContainer { width:min(85vw,calc(100dvh - 128px)) !important;height:min(85vw,calc(100dvh - 128px)) !important; } .fullscreen-active #spinBtn { padding:8px 24px !important;font-size:16px !important;margin:0 !important; } }
+
+/* 2026-10-04 15:07 台灣：開始抽獎按鈕縮小 20%；音訊點擊啟動、五種新增音效與試聽；轉盤文字放大約 20%、加粗、純黑字、無描邊；全螢幕雙指可拉近至 5 倍並單指平移，取消滑桿與畫面邊界限制；文字設定合為小型選單，字級與字色各自下拉並保留自訂；預設白字、字級稍大、無描邊；完成可收起鍵盤。 */
+#spinBtn { font-size:16px !important;padding:11.2px 32px !important;gap:9.6px !important; }
+#wheelSection.fullscreen-active #spinBtn { font-size:16px !important;padding:9.6px 25.6px !important; }
+@media(max-height:500px) { #wheelSection.fullscreen-active #spinBtn { font-size:12.8px !important;padding:6.4px 19.2px !important; } }
+
+#previewSoundBtn { min-height:40px;padding:8px 10px;font-size:13px;white-space:nowrap;flex-shrink:0;align-self:end;margin-bottom:8px; }
+#liveControls .live-field:last-child { min-width:125px; }
+
+
+
+/* v3.6：小型文字設定與可拉近查看名字的手勢。 */
+#liveControls .text-style-field { display:none;flex:none;min-width:0; }
+.fullscreen-active #liveControls .text-style-field { display:flex; }
+.text-style-inputs { display:flex;align-items:center;gap:5px; }
+#labelFontSize { width:56px;height:34px;padding:4px 5px;background:#020617;border:1px solid #334155;border-radius:7px;color:#e2e8f0;font-size:12px; }
+#labelFontColor { width:34px;height:34px;padding:3px;background:#020617;border:1px solid #334155;border-radius:7px;cursor:pointer; }
+.fullscreen-active #liveControls { gap:6px; }
+.fullscreen-active .live-field { min-width:95px;gap:2px; }
+.fullscreen-active #liveControls .wheel-field { min-width:115px; }
+.fullscreen-active #liveControls .live-field > span { font-size:10px; }
+.fullscreen-active #liveControls select { min-height:34px;padding:6px;font-size:12px;border-radius:7px; }
+.fullscreen-active #liveControls .live-field:last-child { min-width:0; }
+#wheelSection.fullscreen-active #wheelContainer { touch-action:none;transform:translate(var(--wheelPanX,0px),var(--wheelPanY,0px)) scale(var(--wheelZoom,1));transform-origin:center;transition:none !important;z-index:0; }
+
+/* v3.7：文字小選單，字級／字色各自下拉。 */
+#textMenu { display:none;position:relative;flex-shrink:0;align-self:end;margin-bottom:8px; }
+.fullscreen-active #textMenu { display:block; }
+#textMenu > summary { min-height:40px;padding:9px 10px;border:1px solid #334155;border-radius:9px;background:#1e293b;color:#e2e8f0;font-size:13px;cursor:pointer;list-style:none; }
+#textMenu .text-popover { position:absolute;right:0;top:48px;width:220px;padding:12px;border:1px solid #475569;border-radius:12px;background:#0f172a;box-shadow:0 12px 28px #0008;display:grid;gap:10px; }
+#textMenu label { display:grid;gap:5px;color:#cbd5e1;font-size:12px; }
+#textMenu select,#textMenu input[type=number] { min-height:40px;width:100%;padding:8px;border:1px solid #334155;border-radius:8px;background:#020617;color:#e2e8f0;font-size:14px; }
+#textMenu input[type=color] { width:100%;height:40px;background:#020617;border:1px solid #334155;border-radius:8px; }
+#textMenu button { min-height:40px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:13px; }
+
+/* v3.8：小手機版面修正（不改任何功能）。
+   設定列在小螢幕改成「一項一列」的單欄，標籤在左、選單在右，精簡不擠；
+   按鈕（文字／試聽／紀錄／退出）排成一列；避開狀態列與導覽列。 */
+@media (max-width:639px) {
+  body > header { padding-top:max(12px,env(safe-area-inset-top,0px)); }
+  #liveBar { flex-wrap:wrap;align-items:stretch;gap:6px; }
+  #liveControls {
+    flex:1 1 100%;display:flex;flex-direction:column;align-items:stretch;
+    gap:6px;overflow:visible;padding:0;
+  }
+  #liveControls .live-field,
+  #liveControls .wheel-field,
+  #liveControls .live-field:last-child {
+    flex:none;min-width:0;flex-direction:row;align-items:center;gap:8px;
+  }
+  #liveControls .live-field > span { flex:0 0 4.5em;font-size:12px; }
+  #liveControls select { flex:1;min-width:0;min-height:36px;padding:6px 8px;font-size:13px; }
+  #liveBar > button,#liveBar > details { flex:1 1 0;margin:0;align-self:stretch; }
+  #liveBar > details > summary,#liveBar > button { min-height:38px;padding:8px 6px;font-size:12px;text-align:center;white-space:nowrap; }
+  #liveBar #simExitFullscreenBtn { margin-top:0;flex:0 0 44px; }
+  #textMenu .text-popover { left:0;right:auto; }
+
+  #wheelSection.fullscreen-active {
+    padding:max(10px,env(safe-area-inset-top,0px)) 12px max(14px,env(safe-area-inset-bottom,0px)) !important;
+    justify-content:flex-start !important;gap:8px;
+  }
+  .fullscreen-active #liveBar { margin-bottom:0; }
+  #wheelSection.fullscreen-active #wheelContainer {
+    width:min(94vw,calc(100dvh - 390px)) !important;height:min(94vw,calc(100dvh - 390px)) !important;
+    margin-top:auto !important;margin-bottom:auto !important;
+  }
+  #wheelSection.fullscreen-active #spinBtn { margin-bottom:calc(env(safe-area-inset-bottom,0px) + 44px) !important; }
+}
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-full flex flex-col selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden">
+
+    <header class="border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-4 lg:px-8 py-3 flex flex-wrap justify-between items-center gap-3">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-400 to-orange-500 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-dharmachakra"></i>
+            </div>
+            <div>
+                <h1 id="appHeaderTitle" class="text-lg font-black bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 bg-clip-text text-transparent font-outfit">幸運大轉盤</h1>
+                <p class="text-[11px] text-slate-400 font-medium">炫光視覺與自訂多轉盤抽獎系統</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <!-- Header Quick Wheel Selector -->
+            <div class="relative flex items-center bg-slate-800/80 rounded-xl p-1 border border-slate-700/80">
+                <i class="fa-solid fa-layer-group text-amber-400 text-xs ml-2.5 mr-1.5"></i>
+                <select id="headerWheelSelect" class="bg-transparent text-xs text-slate-200 font-bold focus:outline-none pr-2 cursor-pointer max-w-[130px] sm:max-w-[180px] truncate">
+                    <!-- Populated dynamically -->
+                </select>
+                <button id="quickAddWheelBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ml-1 flex items-center gap-1 shadow-md shadow-amber-500/20" title="建立新轉盤">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">新增</span>
+                </button>
+            </div>
+
+            <button id="fullscreenBtn" class="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition-all border border-slate-700/80 flex items-center gap-1.5" title="全螢幕 / 滿版模式">
+                <i id="fullscreenIcon" class="fa-solid fa-expand"></i>
+                <span class="hidden md:inline text-xs font-semibold">全螢幕</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        
+        <!-- Left Column: Wheel Display Canvas & Interactive Area -->
+        <section id="wheelSection" class="lg:col-span-7 flex flex-col items-center justify-center glass-panel rounded-3xl p-6 md:p-8 relative min-h-[520px] shadow-2xl border border-slate-800/80 transition-all duration-300">
+            
+            <!-- Floating Exit Simulated Fullscreen Button -->
+            <button id="simExitFullscreenBtn" class="hidden absolute top-4 right-4 z-30 bg-slate-800/90 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold shadow-xl border border-slate-700/80 flex items-center gap-1.5 transition-all active:scale-95">
+                <i class="fa-solid fa-compress text-amber-400"></i>
+                <span>退出滿版模式</span>
+            </button>
+
+            <!-- Wheel Selector & Theme Selector Badge -->
+            <div class="w-full max-w-md mb-2 flex items-center justify-between bg-slate-950/80 border border-slate-800/80 rounded-2xl px-4 py-2 fullscreen-hide">
+                <div class="flex items-center gap-1.5 overflow-hidden">
+                    <span class="text-xs text-slate-400 font-medium shrink-0">目前轉盤：</span>
+                    <span id="activeWheelBadge" class="text-xs font-bold text-amber-400 truncate">預設轉盤</span>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <span class="text-[10px] text-slate-400">風格:</span>
+                    <span id="currentThemeBadge" class="text-[11px] font-extrabold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">嘉年華</span>
+                </div>
+            </div>
+
+            <!-- Wheel Container with Pointer and LED Border -->
+            <div id="wheelContainer" class="relative w-full max-w-[500px] md:max-w-[560px] aspect-square flex items-center justify-center my-3 transition-all">
+                
+                <!-- Pointer Arrow (Physical Flicking Pin) -->
+                <div id="pointerArrow" class="absolute -top-6 left-1/2 -translate-x-1/2 z-20 pointer-shadow pointer-rest origin-top">
+                    <svg width="46" height="54" viewBox="0 0 46 54" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-[0_4px_16px_rgba(239,68,68,0.95)]">
+                        <path d="M23 54L42 13C44.5 8 41 1 35 1H11C5 1 1.5 8 4 13L23 54Z" fill="url(#pointer-gradient)" stroke="#7F1D1D" stroke-width="1.8"/>
+                        <circle cx="23" cy="14" r="5.5" fill="#FFFFFF" opacity="0.95"/>
+                        <defs>
+                            <linearGradient id="pointer-gradient" x1="23" y1="1" x2="23" y2="54" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#F87171"/>
+                                <stop offset="0.35" stop-color="#EF4444"/>
+                                <stop offset="1" stop-color="#991B1B"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+
+                <!-- Wheel Canvas (High-res 800x800) -->
+                <canvas id="wheelCanvas" width="800" height="800" class="w-full h-full rounded-full wheel-shadow cursor-pointer"></canvas>
+                
+                <!-- Center Hub -->
+                <div class="absolute inset-0 m-auto w-20 h-20 md:w-24 md:h-24 bg-slate-950 border-4 border-amber-400 rounded-full flex flex-col items-center justify-center shadow-2xl z-10 pointer-events-none group">
+                    <i class="fa-solid fa-crown text-amber-400 text-xl md:text-2xl group-hover:rotate-12 transition-transform"></i>
+                    <span class="text-[9px] md:text-[10px] text-slate-400 uppercase font-extrabold tracking-widest mt-0.5 font-outfit">LUCKY</span>
+                </div>
+            </div>
+
+            <!-- Spin Action Button -->
+            <button id="spinBtn" class="glow-btn mt-2 px-10 py-3.5 bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xl rounded-full shadow-2xl transform transition-all active:scale-95 flex items-center gap-3 tracking-wide z-20">
+                <i class="fa-solid fa-play"></i>
+                <span>開始抽獎</span>
+            </button>
+
+            <!-- Winner Banner -->
+            <div id="latestWinnerBanner" class="w-full max-w-md mt-4 bg-gradient-to-r from-amber-500/10 via-slate-900 to-orange-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between text-center shadow-lg fullscreen-hide">
+                <div class="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                    <i class="fa-solid fa-trophy text-amber-400 text-base"></i>
+                    <span>最新抽中獎項：</span>
+                </div>
+                <div id="latestWinnerName" class="text-base font-black text-amber-300 truncate max-w-[210px]">
+                    尚未開始抽獎
+                </div>
+            </div>
+
+            <p id="itemCountBadge" class="mt-3 text-xs text-slate-400 bg-slate-950/80 px-3.5 py-1 rounded-full border border-slate-800 fullscreen-hide">
+                目前共有 0 個抽獎項目
+            </p>
+        </section>
+
+        <!-- Right Column: Settings & Customizations -->
+        <section class="lg:col-span-5 glass-panel rounded-3xl p-6 space-y-5 shadow-2xl border border-slate-800/80">
+            
+            <!-- Wheel Manager Section -->
+            <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-3">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-folder-open"></i>轉盤庫與切換
+                    </label>
+                    <div class="flex gap-1.5 flex-wrap justify-end">
+                        <button id="exportWheelsBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 px-2 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1" title="備份並匯出所有轉盤資料">
+                            <i class="fa-solid fa-download text-amber-400"></i>匯出
+                        </button>
+                        <button id="importWheelsBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 px-2 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1" title="匯入備份轉盤檔案">
+                            <i class="fa-solid fa-upload text-amber-400"></i>匯入
+                        </button>
+                        <input type="file" id="importFileInput" accept=".json" class="hidden">
+                        <button id="openAddWheelModalBtn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow">
+                            <i class="fa-solid fa-plus"></i>新增轉盤
+                        </button>
+                        <button id="deleteWheelBtn" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1" title="刪除當前轉盤">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Select Wheel Dropdown -->
+                <div>
+                    <select id="wheelSelectDropdown" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 text-slate-100 text-xs font-bold focus:outline-none focus:border-amber-500 transition-colors cursor-pointer">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Visual Skin / Color Theme Selector -->
+            <div>
+                <label for="themeSelect" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-palette mr-1.5 text-amber-400"></i>轉盤視覺配色主題
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="themeSelect" class="w-full col-span-2 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 text-xs font-bold focus:outline-none focus:border-amber-500 cursor-pointer">
+                        <option value="carnival">🎨 經典嘉年華 (Vibrant Carnival)</option>
+                        <option value="gold">🌟 皇家金奢 (Vegas Gold)</option>
+                        <option value="neon">⚡ 賽博霓虹 (Cyber Neon)</option>
+                        <option value="candy">🍬 夢幻馬卡龍 (Pastel Candy)</option>
+                        <option value="forest">🌲 森林自然 (Forest Emerald)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Current Wheel Title Setting -->
+            <div>
+                <label for="wheelTitleInput" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-heading mr-1.5 text-amber-400"></i>轉盤名稱 / 標題
+                </label>
+                <input type="text" id="wheelTitleInput" value="幸運大轉盤" placeholder="例如：尾牙大抽獎 / 晚餐吃什麼" 
+                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors">
+            </div>
+
+            <!-- Draw Mode Setting -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-sliders mr-1.5 text-amber-400"></i>抽獎規則模式
+                </label>
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer border border-slate-800 bg-slate-950 hover:bg-slate-800/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-xs has-[:checked]:border-amber-500/80 has-[:checked]:bg-amber-500/10">
+                        <input type="radio" name="drawMode" value="keep" checked class="accent-amber-500">
+                        <div>
+                            <div class="font-bold text-slate-200">保留中獎者</div>
+                            <div class="text-[10px] text-slate-500">抽出後項目繼續保留</div>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer border border-slate-800 bg-slate-950 hover:bg-slate-800/50 p-3 rounded-xl flex items-center gap-2.5 transition-all text-xs has-[:checked]:border-amber-500/80 has-[:checked]:bg-amber-500/10">
+                        <input type="radio" name="drawMode" value="remove" class="accent-amber-500">
+                        <div>
+                            <div class="font-bold text-slate-200">自動移除中獎者</div>
+                            <div class="text-[10px] text-slate-500">抽中後立刻從轉盤移除</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Items Input Area -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label for="itemsInput" class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        <i class="fa-solid fa-list-check mr-1.5 text-amber-400"></i>新增 / 編輯轉盤項目 (一行一個)
+                    </label>
+                    <button id="clearItemsBtn" class="text-[11px] text-slate-400 hover:text-red-400 transition-colors">
+                        <i class="fa-solid fa-trash-can mr-1"></i>清空項目
+                    </button>
+                </div>
+                <textarea id="itemsInput" rows="6" placeholder="請在此輸入抽獎名單，每行代表一個選項..." 
+                          class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-slate-200 text-xs font-medium focus:outline-none focus:border-amber-500 transition-colors resize-y">特等獎：iPhone 16
+頭獎：東京來回機票
+二獎：PS5 主機
+三獎：千元禮券
+幸運獎：咖啡兌換券
+銘謝惠顧
+再接再厲</textarea>
+                <button id="updateWheelBtn" class="w-full mt-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 active:scale-95">
+                    <i class="fa-solid fa-check mr-1"></i>儲存並更新轉盤內容
+                </button>
+            </div>
+
+            <!-- Sound Effects Setting -->
+            <div>
+                <label for="soundSelect" class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                    <i class="fa-solid fa-volume-high mr-1.5 text-amber-400"></i>轉盤音效設定
+                </label>
+                <div class="flex gap-2">
+                    <select id="soundSelect" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+                        <option value="default">預設合成音效 (電子 Click)</option>
+                        <option value="custom">載入自訂音效 (MP3/WAV)</option>
+                        <option value="none">靜音模式</option>
+                    </select>
+                    <input type="file" id="customAudioFile" accept="audio/*" class="hidden">
+                    <button id="uploadAudioBtn" class="hidden bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl text-xs text-slate-300 border border-slate-700">
+                        <i class="fa-solid fa-upload mr-1"></i>選擇檔案
+                    </button>
+                </div>
+                <p id="audioFileName" class="text-[11px] text-amber-400/80 mt-1.5 hidden"></p>
+            </div>
+
+            <!-- Winner History Logs -->
+            <div class="pt-2 border-t border-slate-800">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        <i class="fa-solid fa-clock-rotate-left mr-1.5 text-amber-400"></i>中獎歷史紀錄
+                    </span>
+                    <button id="clearHistoryBtn" class="text-[11px] text-slate-500 hover:text-slate-300 transition-colors">
+                        清除紀錄
+                    </button>
+                </div>
+                <ul id="historyList" class="bg-slate-950/80 border border-slate-800 rounded-xl p-2.5 max-h-28 overflow-y-auto space-y-1.5 text-xs text-slate-300">
+                    <li class="text-slate-500 text-center py-2 text-[11px]">尚無中獎紀錄</li>
+                </ul>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Winner Result Modal -->
+    <div id="winnerModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-amber-400/80 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-pop-in">
+            <div class="absolute -top-10 -left-10 w-36 h-36 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-10 -right-10 w-36 h-36 bg-orange-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="w-20 h-20 bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-400/50 rounded-3xl flex items-center justify-center text-amber-400 text-4xl mx-auto mb-4 shadow-inner">
+                <i class="fa-solid fa-trophy animate-bounce"></i>
+            </div>
+
+            <h3 class="text-amber-400 text-xs font-extrabold uppercase tracking-widest">🎉 恭喜幸運中獎！</h3>
+            
+            <div id="winnerDisplay" class="text-3xl font-black text-amber-300 my-4 py-3 px-4 bg-slate-950/80 border border-amber-400/40 rounded-2xl break-words shadow-lg font-outfit">
+                ---
+            </div>
+            
+            <p id="winnerModeNotice" class="text-xs text-slate-400 mb-6 font-medium"></p>
+
+            <button id="closeModalBtn" class="w-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black py-3.5 rounded-2xl shadow-xl transition-all active:scale-95 text-base">
+                確定並繼續
+            </button>
+        </div>
+    </div>
+
+    <!-- Create New Wheel Modal -->
+    <div id="addWheelModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-700/80 rounded-3xl p-6 max-w-md w-full shadow-2xl animate-pop-in space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-slate-100 font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-amber-400"></i>建立新轉盤
+                </h3>
+                <button id="closeAddWheelModalBtn" class="text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div>
+                <label for="newWheelNameInput" class="block text-xs font-semibold text-slate-300 mb-1.5">轉盤名稱</label>
+                <input type="text" id="newWheelNameInput" placeholder="例如：團隊午餐決策 / 遊戲處罰" 
+                       class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-slate-100 text-xs focus:outline-none focus:border-amber-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">選擇預設範本（可隨時修改）</label>
+                <select id="wheelPresetSelect" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+                    <option value="custom">空白預設 (自訂項目)</option>
+                    <option value="dinner">晚餐吃什麼？ (火鍋, 燒肉, 便當, 義大利麵...)</option>
+                    <option value="truth">真心話大冒險 (公開搜尋紀錄, 做20個伏地挺身...)</option>
+                    <option value="numbers">幸運數字 (1 ~ 10)</option>
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="cancelAddWheelBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">取消</button>
+                <button id="confirmAddWheelBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-md">確認建立</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        class SoundEngine {
+            constructor() {
+                this.audioCtx = null;
+                this.customBuffer = null;
+                this.mode = 'default';
+            }
+
+            init() {
+                if (!this.audioCtx) {
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.audioCtx.state !== 'running') {
+                    return this.audioCtx.resume();
+                }
+                return Promise.resolve();
+            }
+
+            playTick() {
+                if (this.mode === 'none') return;
+                this.init();
+
+                if (this.mode === 'custom' && this.customBuffer) {
+                    this.playBuffer(this.customBuffer);
+                    return;
+                }
+
+                const presets = {
+                    default: ['triangle',880,110,0.03,0.2],
+                    wood: ['triangle',420,75,0.045,0.35],
+                    bell: ['sine',1760,1320,0.12,0.22],
+                    arcade: ['square',980,490,0.055,0.09],
+                    water: ['sine',1050,260,0.09,0.24],
+                    drum: ['sine',190,45,0.085,0.45]
+                };
+                const [type,start,end,duration,volume] = presets[this.mode] || presets.default;
+                const osc = this.audioCtx.createOscillator();
+                const gain = this.audioCtx.createGain();
+                const time = this.audioCtx.currentTime;
+                osc.type = type;
+                osc.frequency.setValueAtTime(start,time);
+                osc.frequency.exponentialRampToValueAtTime(end,time+duration);
+                gain.gain.setValueAtTime(volume,time);
+                gain.gain.exponentialRampToValueAtTime(0.001,time+duration);
+                osc.connect(gain);gain.connect(this.audioCtx.destination);
+                osc.start(time);osc.stop(time+duration);
+                osc.onended = () => { osc.disconnect();gain.disconnect(); };
+            }
+
+            playWinFanfare() {
+                if (this.mode === 'none') return;
+                this.init();
+
+                const melodies = {
+                    wood:[392,493.88,587.33,783.99], bell:[783.99,987.77,1174.66,1567.98],
+                    arcade:[523.25,783.99,1046.5,1567.98], water:[659.25,783.99,987.77,1318.51],
+                    drum:[261.63,329.63,392,523.25]
+                };
+                const notes = melodies[this.mode] || [523.25,659.25,783.99,1046.5];
+                notes.forEach((freq, idx) => {
+                    const osc = this.audioCtx.createOscillator();
+                    const gain = this.audioCtx.createGain();
+                    
+                    osc.type = this.mode === 'arcade' ? 'triangle' : 'sine';
+                    osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime + idx * 0.08);
+                    
+                    gain.gain.setValueAtTime(0.25, this.audioCtx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + idx * 0.08 + 0.45);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.audioCtx.destination);
+                    
+                    osc.start(this.audioCtx.currentTime + idx * 0.08);
+                    osc.stop(this.audioCtx.currentTime + idx * 0.08 + 0.45);
+                });
+            }
+
+            playBuffer(buffer) {
+                const source = this.audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(this.audioCtx.destination);
+                source.start(0);
+            }
+
+            async loadCustomAudioFile(file) {
+                this.init();
+                const arrayBuffer = await file.arrayBuffer();
+                this.customBuffer = await this.audioCtx.decodeAudioData(arrayBuffer);
+            }
+        }
+
+        const soundEngine = new SoundEngine();
+    </script>
+
+    <script>
+        const canvas = document.getElementById('wheelCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        const itemsInput = document.getElementById('itemsInput');
+        const updateWheelBtn = document.getElementById('updateWheelBtn');
+        const clearItemsBtn = document.getElementById('clearItemsBtn');
+        const wheelTitleInput = document.getElementById('wheelTitleInput');
+        const appHeaderTitle = document.getElementById('appHeaderTitle');
+        const itemCountBadge = document.getElementById('itemCountBadge');
+        const winnerModal = document.getElementById('winnerModal');
+        const winnerDisplay = document.getElementById('winnerDisplay');
+        const winnerModeNotice = document.getElementById('winnerModeNotice');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const soundSelect = document.getElementById('soundSelect');
+        const customAudioFile = document.getElementById('customAudioFile');
+        const uploadAudioBtn = document.getElementById('uploadAudioBtn');
+        const audioFileName = document.getElementById('audioFileName');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const fullscreenIcon = document.getElementById('fullscreenIcon');
+        const wheelSection = document.getElementById('wheelSection');
+        const simExitFullscreenBtn = document.getElementById('simExitFullscreenBtn');
+        const latestWinnerName = document.getElementById('latestWinnerName');
+        const historyList = document.getElementById('historyList');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const pointerArrow = document.getElementById('pointerArrow');
+        const themeSelect = document.getElementById('themeSelect');
+        const currentThemeBadge = document.getElementById('currentThemeBadge');
+
+        // Multi-Wheel Management Elements
+        const headerWheelSelect = document.getElementById('headerWheelSelect');
+        const wheelSelectDropdown = document.getElementById('wheelSelectDropdown');
+        const activeWheelBadge = document.getElementById('activeWheelBadge');
+        const quickAddWheelBtn = document.getElementById('quickAddWheelBtn');
+        const openAddWheelModalBtn = document.getElementById('openAddWheelModalBtn');
+        const deleteWheelBtn = document.getElementById('deleteWheelBtn');
+        const addWheelModal = document.getElementById('addWheelModal');
+        const closeAddWheelModalBtn = document.getElementById('closeAddWheelModalBtn');
+        const cancelAddWheelBtn = document.getElementById('cancelAddWheelBtn');
+        const confirmAddWheelBtn = document.getElementById('confirmAddWheelBtn');
+        const newWheelNameInput = document.getElementById('newWheelNameInput');
+        const wheelPresetSelect = document.getElementById('wheelPresetSelect');
+
+        const exportWheelsBtn = document.getElementById('exportWheelsBtn');
+        const importWheelsBtn = document.getElementById('importWheelsBtn');
+        const importFileInput = document.getElementById('importFileInput');
+
+        let isSimulatedFullscreen = false;
+
+        const THEME_SKINS = {
+            carnival: {
+                name: '嘉年華',
+                colors: ['#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e', '#84cc16'],
+                rimColor: '#d97706',
+                ledOn: '#fbbf24',
+                ledOff: '#78350f'
+            },
+            gold: {
+                name: '皇家金奢',
+                colors: ['#f59e0b', '#b45309', '#fbbf24', '#78350f', '#d97706', '#92400e', '#fef08a', '#451a03'],
+                rimColor: '#fbbf24',
+                ledOn: '#ffffff',
+                ledOff: '#92400e'
+            },
+            neon: {
+                name: '賽博霓虹',
+                colors: ['#00ffcc', '#ff007f', '#9d00ff', '#0099ff', '#ffea00', '#ff3300', '#00ff66', '#e000ff'],
+                rimColor: '#ff007f',
+                ledOn: '#00ffcc',
+                ledOff: '#3b0764'
+            },
+            candy: {
+                name: '夢幻馬卡龍',
+                colors: ['#ff9a9e', '#fecfef', '#a1c4fd', '#c2e9fb', '#ffbcd9', '#e0c3fc', '#8ec5fc', '#ffd3b6'],
+                rimColor: '#f472b6',
+                ledOn: '#fbcfe8',
+                ledOff: '#831843'
+            },
+            forest: {
+                name: '森林自然',
+                colors: ['#10b981', '#047857', '#059669', '#34d399', '#064e3b', '#6ee7b7', '#022c22', '#14b8a6'],
+                rimColor: '#059669',
+                ledOn: '#a7f3d0',
+                ledOff: '#064e3b'
+            }
+        };
+
+        const DEFAULT_PRESETS = {
+            custom: ["特等獎：iPhone 16", "頭獎：東京來回機票", "二獎：PS5 主機", "三獎：千元禮券", "幸運獎：咖啡兌換券", "銘謝惠顧", "再接再厲"],
+            dinner: ["日式拉麵", "精緻火鍋", "韓式燒肉", "義大利麵", "健康便當", "夜市小吃", "泰式料理", "麥當勞/漢堡"],
+            truth: ["公開最近三筆搜尋紀錄", "做 20 個伏地挺身", "現場讚美左邊的人", "用怪異腔調唸新聞", "展示手機最新照片"],
+            numbers: ["數字 1", "數字 2", "數字 3", "數字 4", "數字 5", "數字 6", "數字 7", "數字 8"]
+        };
+
+        let wheelsState = [
+            {
+                id: 'default_1',
+                title: '幸運大轉盤',
+                mode: 'keep',
+                theme: 'carnival',
+                items: [...DEFAULT_PRESETS.custom]
+            }
+        ];
+        let activeWheelId = 'default_1';
+
+        let items = [];
+        let winningHistory = [];
+        let startAngle = 0;
+        let isSpinning = false;
+        let lastSegmentIndex = -1;
+        let highlightWinnerIndex = -1;
+        let ledStep = 0;
+        let animationFrameId = null;
+
+        function saveWheelsToLocalStorage() {
+            try {
+                localStorage.setItem('lucky_wheels_store', JSON.stringify({
+                    wheels: wheelsState,
+                    activeId: activeWheelId
+                }));
+            } catch (e) {
+                console.warn("LocalStorage save failed:", e);
+            }
+        }
+
+        function loadWheelsFromLocalStorage() {
+            try {
+                const stored = localStorage.getItem('lucky_wheels_store');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    if (Array.isArray(data.wheels) && data.wheels.length > 0) {
+                        wheelsState = data.wheels;
+                        activeWheelId = data.activeId || wheelsState[0].id;
+                    }
+                }
+            } catch (e) {
+                console.warn("LocalStorage load failed:", e);
+            }
+        }
+
+        function updateWheelSelectorUI() {
+            const optionsHtml = wheelsState.map(w => 
+                `<option value="${w.id}" ${w.id === activeWheelId ? 'selected' : ''}>${w.title}</option>`
+            ).join('');
+
+            headerWheelSelect.innerHTML = optionsHtml;
+            wheelSelectDropdown.innerHTML = optionsHtml;
+
+            const activeWheel = getCurrentActiveWheel();
+            if (activeWheel) {
+                activeWheelBadge.textContent = activeWheel.title;
+                appHeaderTitle.textContent = activeWheel.title;
+            }
+        }
+
+        function getCurrentActiveWheel() {
+            return wheelsState.find(w => w.id === activeWheelId) || wheelsState[0];
+        }
+
+        function loadActiveWheelToForm() {
+            const wheel = getCurrentActiveWheel();
+            if (!wheel) return;
+
+            activeWheelId = wheel.id;
+            wheelTitleInput.value = wheel.title;
+            itemsInput.value = wheel.items.join('\n');
+            themeSelect.value = wheel.theme || 'carnival';
+            currentThemeBadge.textContent = THEME_SKINS[themeSelect.value]?.name || '嘉年華';
+            
+            const modeRadio = document.querySelector(`input[name="drawMode"][value="${wheel.mode}"]`);
+            if (modeRadio) modeRadio.checked = true;
+
+            items = [...wheel.items];
+            highlightWinnerIndex = -1;
+            updateWheelSelectorUI();
+            renderWheelHistory();
+            drawWheel();
+        }
+
+        function syncCurrentFormToState() {
+            const wheel = getCurrentActiveWheel();
+            if (!wheel) return;
+
+            wheel.title = wheelTitleInput.value.trim() || '未命名轉盤';
+            wheel.mode = document.querySelector('input[name="drawMode"]:checked')?.value || 'keep';
+            wheel.theme = themeSelect.value;
+            
+            const raw = itemsInput.value.split('\n');
+            wheel.items = raw.map(line => line.trim()).filter(line => line.length > 0);
+            
+            items = [...wheel.items];
+            currentThemeBadge.textContent = THEME_SKINS[wheel.theme]?.name || '嘉年華';
+            updateWheelSelectorUI();
+            saveWheelsToLocalStorage();
+        }
+
+        function getWinningIndex() {
+            const numOptions = items.length;
+            if (numOptions === 0) return -1;
+            const arcSize = (2 * Math.PI) / numOptions;
+            
+            let relativePointerAngle = (1.5 * Math.PI - (startAngle % (2 * Math.PI))) % (2 * Math.PI);
+            if (relativePointerAngle < 0) {
+                relativePointerAngle += 2 * Math.PI;
+            }
+            return Math.floor(relativePointerAngle / arcSize) % numOptions;
+        }
+
+        const wheelTextStyle = {size:null,color:'#ffffff',version:7};
+        try {
+            const saved = JSON.parse(localStorage.getItem('lucky_wheel_text_style') || 'null');
+            if(saved) {
+                if(Number.isFinite(saved.size) && saved.size>=8 && saved.size<=96) wheelTextStyle.size=saved.size;
+                if(saved.version===7 && /^#[0-9a-f]{6}$/i.test(saved.color)) wheelTextStyle.color=saved.color;
+            }
+        } catch(e) {}
+
+        function drawWheel(winningIdx = -1) {
+            const numOptions = items.length;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const outerMargin = 32;
+            const radius = canvas.width / 2 - outerMargin;
+
+            const currentThemeKey = themeSelect.value || 'carnival';
+            const currentSkin = THEME_SKINS[currentThemeKey] || THEME_SKINS.carnival;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (numOptions === 0) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 6;
+                ctx.stroke();
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = 'bold 24px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('請到轉盤管理新增抽獎選項', centerX, centerY);
+                itemCountBadge.textContent = '目前沒有抽獎項目';
+                return;
+            }
+
+            itemCountBadge.textContent = `目前共有 ${numOptions} 個抽獎項目`;
+            const arcSize = (2 * Math.PI) / numOptions;
+
+            let fontSize = 32;
+            if (numOptions > 20) fontSize = 21;
+            else if (numOptions > 12) fontSize = 24;
+            else if (numOptions > 8) fontSize = 28;
+
+            for (let i = 0; i < numOptions; i++) {
+                const angle = startAngle + i * arcSize;
+                const isWinner = (i === winningIdx);
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, angle, angle + arcSize, false);
+                ctx.arc(centerX, centerY, 0, angle + arcSize, angle, true);
+                
+                const segmentColor = isWinner ? '#fef08a' : currentSkin.colors[i % currentSkin.colors.length];
+                ctx.fillStyle = segmentColor;
+                ctx.fill();
+
+                ctx.strokeStyle = isWinner ? '#ffffff' : '#0f172a';
+                ctx.lineWidth = isWinner ? 8 : 3;
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                
+                const textColor = wheelTextStyle.color;
+                let text = items[i];
+                const maxChars = numOptions > 16 ? 10 : 16;
+                if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+                // Keep long names inside the available radial space and narrow segments.
+                let labelSize = wheelTextStyle.size || Math.min(fontSize + (isWinner ? 4 : 0),
+                    numOptions <= 2 ? 36 : Math.max(8, 2 * radius * 0.60 * Math.sin(arcSize / 2) - 4));
+                const maxWidth = radius * 0.83 - 72;
+                ctx.font = `900 ${labelSize}px Inter, "Noto Sans TC", sans-serif`;
+                while (labelSize > 8 && ctx.measureText(text).width > maxWidth) {
+                    labelSize -= 0.5;
+                    ctx.font = `900 ${labelSize}px Inter, "Noto Sans TC", sans-serif`;
+                }
+                ctx.fillStyle = textColor;
+                ctx.fillText(text, radius * 0.83, 0, maxWidth);
+                ctx.restore();
+            }
+
+            // Outer Ring & LED Bulbs
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius + 14, 0, 2 * Math.PI);
+            ctx.lineWidth = 26;
+            ctx.strokeStyle = currentSkin.rimColor;
+            ctx.stroke();
+
+            const numLeds = 28;
+            for (let i = 0; i < numLeds; i++) {
+                const ledAngle = (i * (2 * Math.PI / numLeds)) + (isSpinning ? ledStep * 0.1 : 0);
+                const ledX = centerX + (radius + 14) * Math.cos(ledAngle);
+                const ledY = centerY + (radius + 14) * Math.sin(ledAngle);
+                
+                const isLit = (i + Math.floor(ledStep)) % 2 === 0;
+
+                ctx.beginPath();
+                ctx.arc(ledX, ledY, 7, 0, 2 * Math.PI);
+                ctx.fillStyle = isLit ? currentSkin.ledOn : currentSkin.ledOff;
+                ctx.fill();
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            if (winningIdx >= 0) {
+                const angle = startAngle + winningIdx * arcSize;
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, angle, angle + arcSize, false);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 12;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function rotateWheel() {
+            if (isSpinning) return;
+            if (items.length < 2) {
+                showToast('請至少輸入 2 個選項才能開始抽獎！', 'warning');
+                return;
+            }
+
+            isSpinning = true;
+            highlightWinnerIndex = -1;
+            spinBtn.disabled = true;
+            spinBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const spinAngleStart = Math.random() * 10 + 14;
+            let spinTime = 0;
+            const spinTimeTotal = Math.random() * 3000 + 4800;
+
+            function rotate() {
+                spinTime += 30;
+                ledStep += 0.35;
+
+                if (spinTime >= spinTimeTotal) {
+                    finishSpin();
+                    return;
+                }
+
+                const progress = spinTime / spinTimeTotal;
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const spinAngle = spinAngleStart * (1 - easeOut);
+                
+                startAngle += (spinAngle * Math.PI / 180);
+                drawWheel();
+
+                const currentSegment = getWinningIndex();
+                if (currentSegment !== lastSegmentIndex && currentSegment >= 0) {
+                    soundEngine.playTick();
+                    
+                    pointerArrow.classList.remove('pointer-rest');
+                    pointerArrow.classList.add('pointer-flick');
+                    setTimeout(() => {
+                        pointerArrow.classList.remove('pointer-flick');
+                        pointerArrow.classList.add('pointer-rest');
+                    }, 50);
+
+                    lastSegmentIndex = currentSegment;
+                }
+
+                animationFrameId = requestAnimationFrame(rotate);
+            }
+
+            rotate();
+        }
+
+        function finishSpin() {
+            isSpinning = false;
+            spinBtn.disabled = false;
+            spinBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            const index = getWinningIndex();
+            highlightWinnerIndex = index;
+            drawWheel(index);
+
+            const winner = items[index];
+            winnerDisplay.textContent = winner;
+            latestWinnerName.textContent = winner;
+
+            addHistoryRecord(winner);
+
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 90,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            soundEngine.playWinFanfare();
+
+            const selectedMode = document.querySelector('input[name="drawMode"]:checked')?.value || 'keep';
+            if (selectedMode === 'remove') {
+                items.splice(index, 1);
+                itemsInput.value = items.join('\n');
+                syncCurrentFormToState();
+                winnerModeNotice.textContent = '此模式下，該選項已自動從轉盤中移除。';
+            } else {
+                winnerModeNotice.textContent = '此選項已保留在轉盤中，可重複抽獎。';
+            }
+
+            winnerModal.classList.remove('hidden');
+        }
+
+        // 每個轉盤各自保存中獎紀錄（存在該轉盤資料內，隨 localStorage 保存、匯出／匯入一併還原）。
+        function renderWheelHistory() {
+            const wheel = getCurrentActiveWheel();
+            const list = (wheel && Array.isArray(wheel.history)) ? wheel.history : [];
+            winningHistory = list;
+            latestWinnerName.textContent = (wheel && wheel.latest) ? wheel.latest : '尚未開始抽獎';
+            if (list.length === 0) {
+                historyList.innerHTML = '<li class="text-slate-500 text-center py-2 text-[11px]">尚無中獎紀錄</li>';
+                return;
+            }
+            historyList.innerHTML = list.map(h => `
+                <li class="flex items-center justify-between border-b border-slate-800/60 pb-1 pt-0.5">
+                    <span class="font-bold text-amber-300 truncate"><i class="fa-solid fa-gift mr-1 text-xs"></i>${h.item}</span>
+                    <span class="text-[10px] text-slate-500 font-mono">${h.time}</span>
+                </li>
+            `).join('');
+        }
+
+        function addHistoryRecord(item) {
+            const wheel = getCurrentActiveWheel();
+            if (!wheel) return;
+            if (!Array.isArray(wheel.history)) wheel.history = [];
+            const d = new Date();
+            const timeStr = (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+                d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            wheel.history.unshift({ item, time: timeStr });
+            if (wheel.history.length > 200) wheel.history.pop();
+            wheel.latest = item;
+            saveWheelsToLocalStorage();
+            renderWheelHistory();
+        }
+
+        clearHistoryBtn.addEventListener('click', () => {
+            const wheel = getCurrentActiveWheel();
+            if (!wheel) return;
+            wheel.history = [];
+            wheel.latest = '';
+            saveWheelsToLocalStorage();
+            renderWheelHistory();
+        });
+
+        function switchActiveWheel(newId) {
+            syncCurrentFormToState();
+            activeWheelId = newId;
+            loadActiveWheelToForm();
+            showToast('已切換轉盤！', 'info');
+        }
+
+        headerWheelSelect.addEventListener('change', (e) => switchActiveWheel(e.target.value));
+        wheelSelectDropdown.addEventListener('change', (e) => switchActiveWheel(e.target.value));
+        themeSelect.addEventListener('change', () => {
+            syncCurrentFormToState();
+            drawWheel(highlightWinnerIndex);
+        });
+
+        // Live Item Editing Support
+        itemsInput.addEventListener('input', () => {
+            syncCurrentFormToState();
+            drawWheel();
+        });
+
+        wheelTitleInput.addEventListener('input', () => {
+            syncCurrentFormToState();
+        });
+
+        document.querySelectorAll('input[name="drawMode"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                syncCurrentFormToState();
+            });
+        });
+
+        // Create Wheel Modal Handlers
+        function openCreateWheelModal() {
+            newWheelNameInput.value = '';
+            addWheelModal.classList.remove('hidden');
+        }
+
+        quickAddWheelBtn.addEventListener('click', openCreateWheelModal);
+        openAddWheelModalBtn.addEventListener('click', openCreateWheelModal);
+
+        closeAddWheelModalBtn.addEventListener('click', () => addWheelModal.classList.add('hidden'));
+        cancelAddWheelBtn.addEventListener('click', () => addWheelModal.classList.add('hidden'));
+
+        confirmAddWheelBtn.addEventListener('click', () => {
+            const name = newWheelNameInput.value.trim() || '未命名新轉盤';
+            const presetKey = wheelPresetSelect.value;
+            const presetItems = DEFAULT_PRESETS[presetKey] || DEFAULT_PRESETS.custom;
+
+            const newId = 'wheel_' + Date.now().toString(36);
+            wheelsState.push({
+                id: newId,
+                title: name,
+                mode: 'keep',
+                theme: themeSelect.value || 'carnival',
+                items: [...presetItems]
+            });
+
+            addWheelModal.classList.add('hidden');
+            switchActiveWheel(newId);
+            showToast(`成功建立新轉盤「${name}」！`, 'success');
+        });
+
+        // Delete Wheel Handler
+        deleteWheelBtn.addEventListener('click', () => {
+            if (wheelsState.length <= 1) {
+                showToast('至少需要保留一個轉盤！', 'warning');
+                return;
+            }
+            const current = getCurrentActiveWheel();
+            wheelsState = wheelsState.filter(w => w.id !== activeWheelId);
+            activeWheelId = wheelsState[0].id;
+            loadActiveWheelToForm();
+            saveWheelsToLocalStorage();
+            showToast(`已刪除轉盤「${current.title}」`, 'info');
+        });
+
+        // Export Wheels Handler
+        function exportWheelsData() {
+            syncCurrentFormToState();
+            const exportPayload = {
+                wheels: wheelsState,
+                activeId: activeWheelId,
+                exportedAt: new Date().toISOString()
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            const dateSuffix = new Date().toISOString().slice(0, 10);
+            downloadAnchor.setAttribute("download", `lucky_wheels_backup_${dateSuffix}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('轉盤資料已成功匯出存檔！', 'success');
+        }
+
+        // Import Wheels Handler
+        function importWheelsData(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData && Array.isArray(importedData.wheels) && importedData.wheels.length > 0) {
+                        wheelsState = importedData.wheels;
+                        activeWheelId = importedData.activeId || wheelsState[0].id;
+                        saveWheelsToLocalStorage();
+                        loadActiveWheelToForm();
+                        showToast('轉盤資料已順利匯入並還原！', 'success');
+                    } else {
+                        showToast('匯入檔案格式不符，無法解析轉盤資料', 'warning');
+                    }
+                } catch (err) {
+                    showToast('匯入失敗：檔案非有效的 JSON 格式', 'warning');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        exportWheelsBtn.addEventListener('click', exportWheelsData);
+        importWheelsBtn.addEventListener('click', () => importFileInput.click());
+        importFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                importWheelsData(e.target.files[0]);
+                e.target.value = ''; // reset file input for future uses
+            }
+        });
+
+        // Explicit Save Button Handler
+        updateWheelBtn.addEventListener('click', () => {
+            syncCurrentFormToState();
+            drawWheel();
+            showToast('轉盤項目已更新並儲存！', 'success');
+        });
+
+        clearItemsBtn.addEventListener('click', () => {
+            itemsInput.value = '';
+            syncCurrentFormToState();
+            drawWheel();
+            showToast('已清空所有選項', 'info');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            winnerModal.classList.add('hidden');
+            drawWheel(highlightWinnerIndex);
+        });
+
+        // Sound Selection Handlers
+        soundSelect.addEventListener('change', (e) => {
+            soundEngine.mode = e.target.value;
+            if (e.target.value === 'custom') {
+                uploadAudioBtn.classList.remove('hidden');
+                customAudioFile.click();
+            } else {
+                uploadAudioBtn.classList.add('hidden');
+                audioFileName.classList.add('hidden');
+            }
+        });
+
+        customAudioFile.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    await soundEngine.loadCustomAudioFile(file);
+                    audioFileName.textContent = `已載入音效：${file.name}`;
+                    audioFileName.classList.remove('hidden');
+                    showToast('自訂音效載入成功！', 'success');
+                } catch (err) {
+                    showToast('音效檔案載入失敗', 'warning');
+                }
+            }
+        });
+
+        function enableFullscreenStyles() {
+            wheelSection.classList.add('fullscreen-active');
+            simExitFullscreenBtn.classList.remove('hidden');
+            fullscreenIcon.className = "fa-solid fa-compress";
+            drawWheel(highlightWinnerIndex);
+        }
+
+        function disableFullscreenStyles() {
+            wheelSection.classList.remove('fullscreen-active');
+            simExitFullscreenBtn.classList.add('hidden');
+            fullscreenIcon.className = "fa-solid fa-expand";
+            drawWheel(highlightWinnerIndex);
+        }
+
+        function toggleFullscreen() {
+            const getFsElement = () => document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+            if (isSimulatedFullscreen || getFsElement()) {
+                exitSimulatedFullscreen();
+                return;
+            }
+
+            const docEl = document.documentElement;
+            const reqFn = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+
+            if (reqFn) {
+                const promise = reqFn.call(docEl);
+                if (promise && typeof promise.then === 'function') {
+                    promise.then(() => {
+                        enableFullscreenStyles();
+                        showToast('已開啟全螢幕模式', 'success');
+                    }).catch((err) => {
+                        enterSimulatedFullscreen();
+                    });
+                } else {
+                    setTimeout(() => {
+                        if (!getFsElement()) {
+                            enterSimulatedFullscreen();
+                        } else {
+                            enableFullscreenStyles();
+                            showToast('已開啟全螢幕模式', 'success');
+                        }
+                    }, 100);
+                }
+            } else {
+                enterSimulatedFullscreen();
+            }
+        }
+
+        function enterSimulatedFullscreen() {
+            isSimulatedFullscreen = true;
+            enableFullscreenStyles();
+            showToast('已進入極簡大轉盤模式', 'info');
+        }
+
+        function exitSimulatedFullscreen() {
+            isSimulatedFullscreen = false;
+            if (document.fullscreenElement) {
+                const exitFn = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+                if (exitFn) exitFn.call(document);
+            }
+            disableFullscreenStyles();
+            showToast('已退出滿版模式', 'info');
+        }
+
+        const onFsChange = () => {
+            const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (fsEl) {
+                enableFullscreenStyles();
+            } else if (!isSimulatedFullscreen) {
+                disableFullscreenStyles();
+            }
+        };
+
+        document.addEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
+        document.addEventListener('mozfullscreenchange', onFsChange);
+        document.addEventListener('MSFullscreenChange', onFsChange);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                exitSimulatedFullscreen();
+            }
+        });
+
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+        simExitFullscreenBtn.addEventListener('click', exitSimulatedFullscreen);
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const typeStyles = {
+                success: 'bg-emerald-950/90 border-emerald-500 text-emerald-200',
+                warning: 'bg-amber-950/90 border-amber-500 text-amber-200',
+                info: 'bg-slate-900/90 border-amber-500/50 text-slate-200'
+            };
+
+            const icons = {
+                success: 'fa-circle-check text-emerald-400',
+                warning: 'fa-triangle-exclamation text-amber-400',
+                info: 'fa-circle-info text-amber-400'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 border px-4 py-3 rounded-2xl shadow-2xl text-xs backdrop-blur-md transition-all transform translate-y-4 opacity-0 ${typeStyles[type] || typeStyles.info}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} text-base"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        spinBtn.addEventListener('click', rotateWheel);
+        canvas.addEventListener('click', rotateWheel);
+
+        window.addEventListener('load', () => {
+            loadWheelsFromLocalStorage();
+            loadActiveWheelToForm();
+        });
+    </script>
+
+<script>
+(() => {
+ const main=document.querySelector('main'), wheel=document.getElementById('wheelSection');
+ const manager=main.querySelector('section + section');const blocks=Array.from(manager.children);manager.id='managerPage';manager.hidden=true;
+ const headerActions=document.querySelector('header > div:last-child');
+ const oldWheelBox=document.getElementById('headerWheelSelect').parentElement;
+ const quick=document.getElementById('quickAddWheelBtn');quick.hidden=true;manager.appendChild(quick);
+ const nav=document.createElement('nav');nav.className='app-pages';nav.setAttribute('aria-label','頁面切換');
+ nav.innerHTML='<button type="button" id="wheelPageBtn" aria-controls="wheelSection" aria-pressed="true">轉盤</button><button type="button" id="managerPageBtn" aria-controls="managerPage" aria-pressed="false">轉盤管理</button>';
+ document.querySelector('header').insertBefore(nav,headerActions);
+ const bar=document.createElement('div');bar.id='liveBar';const controls=document.createElement('div');controls.id='liveControls';bar.appendChild(controls);wheel.prepend(bar);
+ function field(text,node,className=''){const label=document.createElement('label');label.className='live-field '+className;const span=document.createElement('span');span.textContent=text;label.append(span,node);controls.appendChild(label);}
+ field('切換轉盤',document.getElementById('headerWheelSelect'),'wheel-field');oldWheelBox.remove();
+ field('配色',document.getElementById('themeSelect'));
+ const themeNames=['🎨 嘉年華','🌟 金奢','⚡ 霓虹','🍬 馬卡龍','🌲 森林'];Array.from(document.getElementById('themeSelect').options).forEach((o,i)=>o.textContent=themeNames[i]);
+ const mode=document.createElement('select');mode.id='liveDrawMode';mode.innerHTML='<option value="keep">保留中獎者</option><option value="remove">中獎後移除</option>';field('抽獎方式',mode);
+ blocks[3].id='drawModeSource';wheel.appendChild(blocks[3]);
+ mode.addEventListener('change',()=>{const radio=document.querySelector('input[name="drawMode"][value="'+mode.value+'"]');radio.checked=true;radio.dispatchEvent(new Event('change',{bubbles:true}));});
+ function syncMode(){mode.value=document.querySelector('input[name="drawMode"]:checked')?.value||'keep';}
+ const oldLoad=loadActiveWheelToForm;loadActiveWheelToForm=function(){oldLoad();syncMode();};
+ document.querySelectorAll('input[name="drawMode"]').forEach(r=>r.addEventListener('change',syncMode));
+ field('音效',document.getElementById('soundSelect'));
+ Array.from(document.getElementById('soundSelect').options).forEach((o,i)=>o.textContent=['預設音效','自訂音效','靜音'][i]);
+ bar.appendChild(document.getElementById('uploadAudioBtn'));wheel.append(document.getElementById('customAudioFile'),document.getElementById('audioFileName'));
+ const history=document.createElement('details');history.id='historyMenu';const summary=document.createElement('summary');summary.textContent='紀錄 ▾';history.append(summary,blocks[6]);bar.appendChild(history);
+ bar.appendChild(document.getElementById('simExitFullscreenBtn'));
+ const top=document.createElement('div');top.id='manageTop';
+ const chooser=document.getElementById('wheelSelectDropdown');chooser.setAttribute('aria-label','選擇已有轉盤');top.append(chooser,document.getElementById('openAddWheelModalBtn'));
+ const actions=document.createElement('div');actions.id='manageActions';actions.append(document.getElementById('exportWheelsBtn'),document.getElementById('importWheelsBtn'),document.getElementById('importFileInput'));top.appendChild(actions);
+ const del=document.getElementById('deleteWheelBtn');del.innerHTML='<i class="fa-solid fa-trash-can"></i> 刪除此轉盤';
+ manager.replaceChildren(top,blocks[2],blocks[4],del,quick);
+ const info=document.createElement('details');info.className='version-info';info.innerHTML='<summary>版本資訊</summary><p>檔名：抽獎系統_即時設定分頁版.html<br>來源：抽獎系統_版面整理.html<br>版本：v3.7／2026-10-04 15:29（台灣時間）<br>變更：轉盤與管理分頁；全螢幕保留即時設定列；新增、切換及匯入匯出置頂；獨立轉盤依螢幕空間放大；開始抽獎按鈕縮小 20%；音訊點擊啟動、五種新增音效與試聽；轉盤文字放大約 20%、加粗、純黑字、無描邊；全螢幕雙指可拉近至 5 倍並單指平移，取消滑桿與畫面邊界限制；文字設定合為小型選單，字級與字色各自下拉並保留自訂；預設白字、字級稍大、無描邊；完成可收起鍵盤。<br>檢查：原有抽獎程式保留；語法與區塊檢查完成；瀏覽器互動待實測。</p>';manager.appendChild(info);
+ const a=document.getElementById('wheelPageBtn'),b=document.getElementById('managerPageBtn');
+ function page(manage){wheel.hidden=manage;manager.hidden=!manage;a.setAttribute('aria-pressed',String(!manage));b.setAttribute('aria-pressed',String(manage));history.open=false;window.scrollTo({top:0,behavior:'instant'});}
+ a.addEventListener('click',()=>page(false));b.addEventListener('click',()=>page(true));
+ document.getElementById('fullscreenBtn').addEventListener('click',()=>page(false),true);
+ syncMode();
+})();
+</script>
+
+<script>
+// v3.2：使用者點擊時解鎖音訊，新增內建音效與試聽。
+(() => {
+ const select=document.getElementById('soundSelect');
+ [['wood','木質喀答'],['bell','清脆鈴聲'],['arcade','電子遊戲'],['water','柔和水滴'],['drum','低沉鼓點']].forEach(([value,name])=>{const o=new Option(name,value);select.insertBefore(o,select.querySelector('option[value="custom"]'));});
+ const preview=document.createElement('button');preview.id='previewSoundBtn';preview.type='button';preview.textContent='試聽 ♪';preview.className='bg-slate-800 text-slate-200 border border-slate-700 rounded-xl';
+ document.getElementById('liveBar').insertBefore(preview,document.getElementById('historyMenu'));
+ async function unlock(){if(soundEngine.mode==='none')return;try {await soundEngine.init();}catch(e){showToast('音效啟動失敗，請再按一次試聽。','warning');}}
+ document.getElementById('spinBtn').addEventListener('click',unlock,true);
+ document.getElementById('wheelCanvas').addEventListener('click',unlock,true);
+ document.getElementById('uploadAudioBtn').addEventListener('click',()=>document.getElementById('customAudioFile').click());
+ async function listen(){
+  if(select.value==='none'){showToast('目前為靜音模式','info');return;}
+  if(select.value==='custom'&&!soundEngine.customBuffer){showToast('請先選擇自訂音效檔案','warning');return;}
+  await unlock();if(soundEngine.audioCtx?.state==='running')soundEngine.playTick();
+ }
+ preview.addEventListener('click',listen);
+ select.addEventListener('change',()=>{
+  try {localStorage.setItem('lucky_sound_mode',select.value==='custom'?'default':select.value);}catch(e){}
+  if(select.value!=='custom'&&select.value!=='none')listen();
+ });
+ try {const saved=localStorage.getItem('lucky_sound_mode');if(saved&&Array.from(select.options).some(o=>o.value===saved)){select.value=saved;soundEngine.mode=saved;}}catch(e){}
+})();
+</script>
+
+
+
+
+
+
+<script>
+// 放大可超出畫面；雙指以手指中心缩放，單指平移，防止拖曳後誤抽。
+(() => {
+ const wheel=document.getElementById('wheelSection'),area=document.getElementById('wheelContainer');
+ let scale=1,x=0,y=0,state=null,blockUntil=0,hadGesture=false;
+ const distance=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+ function apply(){wheel.style.setProperty('--wheelZoom',String(scale));wheel.style.setProperty('--wheelPanX',x+'px');wheel.style.setProperty('--wheelPanY',y+'px');}
+ function begin(e){
+  if(!wheel.classList.contains('fullscreen-active'))return;
+  if(e.touches.length===2){e.preventDefault();hadGesture=true;const rect=area.getBoundingClientRect();state={kind:'pinch',d:distance(e.touches),scale,x,y,cx:(rect.left+rect.right)/2-x,cy:(rect.top+rect.bottom)/2-y};}
+  else if(e.touches.length===1){const t=e.touches[0];state={kind:'pan',tx:t.clientX,ty:t.clientY,x,y};}
+ }
+ function move(e){
+  if(!state||!wheel.classList.contains('fullscreen-active'))return;
+  if(e.touches.length===2){if(state.kind!=='pinch'){begin(e);return;}e.preventDefault();const t=e.touches,mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;const next=Math.max(.3,Math.min(5,state.scale*distance(t)/Math.max(1,state.d))),ratio=next/state.scale;x=mx-state.cx-(mx-state.cx-state.x)*ratio;y=my-state.cy-(my-state.cy-state.y)*ratio;scale=next;hadGesture=true;apply();}
+  else if(e.touches.length===1&&state.kind==='pan'){const dx=e.touches[0].clientX-state.tx,dy=e.touches[0].clientY-state.ty;if(Math.hypot(dx,dy)>6||hadGesture){e.preventDefault();hadGesture=true;x=state.x+dx;y=state.y+dy;apply();}}
+ }
+ function end(e){if(hadGesture)blockUntil=Date.now()+650;if(e.touches.length){begin(e);}else{state=null;hadGesture=false;}}
+ area.addEventListener('touchstart',begin,{passive:false});area.addEventListener('touchmove',move,{passive:false});area.addEventListener('touchend',end,{passive:false});area.addEventListener('touchcancel',()=>{state=null;hadGesture=false;blockUntil=Date.now()+650;},{passive:false});
+ area.addEventListener('click',e=>{if(hadGesture||Date.now()<blockUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
+ // Entering fullscreen starts with the complete wheel in view.
+ new MutationObserver(()=>{if(!wheel.classList.contains('fullscreen-active')){scale=1;x=0;y=0;state=null;apply();}}).observe(wheel,{attributes:true,attributeFilter:['class']});
+ apply();
+})();
+</script>
+
+<script>
+(() => {
+ const menu=document.createElement('details');menu.id='textMenu';
+ menu.innerHTML='<summary>文字 ▾</summary><div class="text-popover"><label>字級<select id="textSizeSelect"><option value="auto">自動（稍大）</option><option value="18">18</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option><option value="36">36</option><option value="40">40</option><option value="48">48</option><option value="custom">自訂大小…</option></select><input id="labelFontSize" hidden type="number" min="8" max="96" inputmode="numeric" placeholder="輸入字級" aria-label="自訂轉盤字級"></label><label>字色<select id="textColorSelect"><option value="#ffffff">白色</option><option value="#000000">黑色</option><option value="#facc15">黃色</option><option value="#22c55e">綠色</option><option value="#ef4444">紅色</option><option value="#3b82f6">藍色</option><option value="custom">自訂顏色…</option></select><input id="labelFontColor" hidden type="color" aria-label="自訂轉盤字色"></label><button type="button" id="finishTextSettings">完成</button></div>';
+ document.getElementById('liveBar').insertBefore(menu,document.getElementById('previewSoundBtn'));
+ const sizes=menu.querySelector('#textSizeSelect'),colors=menu.querySelector('#textColorSelect'),size=menu.querySelector('#labelFontSize'),color=menu.querySelector('#labelFontColor');
+ size.value=wheelTextStyle.size??32;color.value=wheelTextStyle.color;
+ sizes.value=wheelTextStyle.size===null?'auto':Array.from(sizes.options).some(o=>o.value===String(wheelTextStyle.size))?String(wheelTextStyle.size):'custom';size.hidden=sizes.value!=='custom';
+ colors.value=Array.from(colors.options).some(o=>o.value===wheelTextStyle.color)?wheelTextStyle.color:'custom';color.hidden=colors.value!=='custom';
+ function save(){try{localStorage.setItem('lucky_wheel_text_style',JSON.stringify(wheelTextStyle));}catch(e){}drawWheel(highlightWinnerIndex);}
+ sizes.addEventListener('change',()=>{size.hidden=sizes.value!=='custom';wheelTextStyle.size=sizes.value==='auto'?null:sizes.value==='custom'?Math.max(8,Math.min(96,Number(size.value)||32)):Number(sizes.value);save();if(!size.hidden)size.focus();});
+ colors.addEventListener('change',()=>{color.hidden=colors.value!=='custom';wheelTextStyle.color=colors.value==='custom'?color.value:colors.value;save();});
+ size.addEventListener('input',()=>{const n=Number(size.value);if(n>=8&&n<=96){wheelTextStyle.size=n;save();}});
+ size.addEventListener('change',()=>{wheelTextStyle.size=Math.max(8,Math.min(96,Number(size.value)||32));size.value=wheelTextStyle.size;save();});
+ color.addEventListener('input',()=>{wheelTextStyle.color=color.value;save();});
+ function finish(){size.blur();color.blur();menu.open=false;}
+ menu.querySelector('#finishTextSettings').addEventListener('click',finish);
+ size.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();size.dispatchEvent(new Event('change'));finish();}});
+ document.addEventListener('pointerdown',e=>{if(menu.open&&!menu.contains(e.target))finish();});
+ save();
+})();
+</script>
+</body>
+</html>
