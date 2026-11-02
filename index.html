@@ -297,12 +297,14 @@ body > main { max-width:1200px;padding:16px; }
   #wheelSection.fullscreen-active #spinBtn { margin-bottom:calc(env(safe-area-inset-bottom,0px) + 44px) !important; }
 }
 
-/* 平板直向全螢幕：退出按鈕只保留圖示，避免擠壓控制列。 */
+
+/* 平板直向全螢幕：退出按鈕縮成單一圖示，不顯示文字。 */
 @media (min-width: 640px) and (max-width: 1600px) and (orientation: portrait) {
   #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn {
     flex: 0 0 40px !important;
     width: 40px !important;
     min-width: 40px !important;
+    max-width: 40px !important;
     min-height: 40px !important;
     height: 40px !important;
     padding: 0 !important;
@@ -315,11 +317,11 @@ body > main { max-width:1200px;padding:16px; }
     display: none !important;
   }
   #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn i {
+    display: inline-block !important;
     margin: 0 !important;
     font-size: 16px !important;
   }
 }
-
 </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-full flex flex-col selection:bg-amber-500 selection:text-slate-900 overflow-x-hidden">
@@ -1528,6 +1530,12 @@ body > main { max-width:1200px;padding:16px; }
  Array.from(document.getElementById('soundSelect').options).forEach((o,i)=>o.textContent=['預設音效','自訂音效','靜音'][i]);
  bar.appendChild(document.getElementById('uploadAudioBtn'));wheel.append(document.getElementById('customAudioFile'),document.getElementById('audioFileName'));
  const history=document.createElement('details');history.id='historyMenu';const summary=document.createElement('summary');summary.textContent='紀錄 ▾';history.append(summary,blocks[6]);bar.appendChild(history);
+ // 點擊紀錄選單以外的畫面時，自動收合；選單內的操作不受影響。
+ document.addEventListener('click', (event) => {
+  if (history.open && !history.contains(event.target)) {
+   history.open = false;
+  }
+ });
  bar.appendChild(document.getElementById('simExitFullscreenBtn'));
  const top=document.createElement('div');top.id='manageTop';
  const chooser=document.getElementById('wheelSelectDropdown');chooser.setAttribute('aria-label','選擇已有轉盤');top.append(chooser,document.getElementById('openAddWheelModalBtn'));
