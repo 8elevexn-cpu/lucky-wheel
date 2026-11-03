@@ -47,17 +47,17 @@ jobs:
           "$BT/apksigner" verify --print-certs app/build/outputs/apk/release/*.apk | grep -i "SHA-256" || true
 
       - name: 重新命名
-        run: cp app/build/outputs/apk/release/app-release.apk lucky-wheel-v1.0.4.apk
+        run: cp app/build/outputs/apk/release/app-release.apk lucky-wheel-v1.0.5.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: lucky-wheel-apk
-          path: lucky-wheel-v1.0.4.apk
+          path: lucky-wheel-v1.0.5.apk
 
       - name: 發佈到 Releases（可直接下載 APK）
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "apk-${{ github.run_number }}" lucky-wheel-v1.0.4.apk \
+          gh release create "apk-${{ github.run_number }}" lucky-wheel-v1.0.5.apk \
             --title "幸運轉盤 APK #${{ github.run_number }}" \
-            --notes "自動編譯的 APK，點下方 lucky-wheel-v1.0.4.apk 即可下載安裝。"
+            --notes "自動編譯的 APK，點下方 lucky-wheel-v1.0.5.apk 即可下載安裝。"
