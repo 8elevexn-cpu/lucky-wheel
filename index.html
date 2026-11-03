@@ -245,6 +245,13 @@ body > main { max-width:1200px;padding:16px; }
    - 四個下拉併成一列、標籤隱藏；文字／試聽／紀錄一列
    - 「文字」設定在一般畫面也能使用 */
 #textMenu { display:block; }
+/* 平板／全螢幕單列時，音效欄位不再被擠到看不見：每欄有最小寬度且不縮，空間不夠就在列內左右捲動 */
+.fullscreen-active #liveControls .live-field,
+.fullscreen-active #liveControls .live-field:last-child { flex:1 0 104px;min-width:104px; }
+.fullscreen-active #liveControls .wheel-field { flex:1.3 0 124px;min-width:124px; }
+/* 退出全螢幕鈕縮小：圖示變小、按鈕變窄 */
+#liveBar #simExitFullscreenBtn { min-height:32px;height:32px;padding:0 8px;margin-top:0;align-self:end;margin-bottom:8px;justify-content:center;gap:0;font-size:11px; }
+#liveBar #simExitFullscreenBtn i, #liveBar #simExitFullscreenBtn svg { font-size:11px;width:12px;height:12px; }
 @media (max-width:639px) {
   body > header { padding:max(8px,env(safe-area-inset-top,0px)) 12px 8px;gap:6px;flex-wrap:wrap; }
   body > header > div:first-child { flex:1 1 100%; }
@@ -268,7 +275,10 @@ body > main { max-width:1200px;padding:16px; }
   }
   #liveControls .live-field,
   #liveControls .wheel-field,
-  #liveControls .live-field:last-child { display:block;flex:none;min-width:0;margin:0; }
+  #liveControls .live-field:last-child,
+  .fullscreen-active #liveControls .live-field,
+  .fullscreen-active #liveControls .wheel-field,
+  .fullscreen-active #liveControls .live-field:last-child { display:block;flex:none;min-width:0;margin:0; }
   #liveControls .live-field > span {
     position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;
   }
@@ -282,7 +292,7 @@ body > main { max-width:1200px;padding:16px; }
   }
   #liveBar > button,#liveBar > details { flex:1 1 0;margin:0;align-self:stretch; }
   #liveBar > details > summary,#liveBar > button { min-height:36px;padding:7px 4px;font-size:12px;text-align:center;white-space:nowrap; }
-  #liveBar #simExitFullscreenBtn { margin-top:0;flex:0 0 44px; }
+  #liveBar #simExitFullscreenBtn { margin:0;flex:0 0 34px;min-width:34px;align-self:stretch;height:auto;min-height:36px;padding:0; }
   #textMenu .text-popover { left:0;right:auto; }
 
   #wheelSection.fullscreen-active {
@@ -295,32 +305,6 @@ body > main { max-width:1200px;padding:16px; }
     margin-top:auto !important;margin-bottom:auto !important;
   }
   #wheelSection.fullscreen-active #spinBtn { margin-bottom:calc(env(safe-area-inset-bottom,0px) + 44px) !important; }
-}
-
-
-/* 平板直向全螢幕：退出按鈕縮成單一圖示，不顯示文字。 */
-@media (min-width: 640px) and (max-width: 1600px) and (orientation: portrait) {
-  #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn {
-    flex: 0 0 40px !important;
-    width: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
-    min-height: 40px !important;
-    height: 40px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    gap: 0 !important;
-    justify-content: center !important;
-    font-size: 0 !important;
-  }
-  #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn span {
-    display: none !important;
-  }
-  #wheelSection.fullscreen-active #liveBar #simExitFullscreenBtn i {
-    display: inline-block !important;
-    margin: 0 !important;
-    font-size: 16px !important;
-  }
 }
 </style>
 </head>
@@ -1530,12 +1514,6 @@ body > main { max-width:1200px;padding:16px; }
  Array.from(document.getElementById('soundSelect').options).forEach((o,i)=>o.textContent=['預設音效','自訂音效','靜音'][i]);
  bar.appendChild(document.getElementById('uploadAudioBtn'));wheel.append(document.getElementById('customAudioFile'),document.getElementById('audioFileName'));
  const history=document.createElement('details');history.id='historyMenu';const summary=document.createElement('summary');summary.textContent='紀錄 ▾';history.append(summary,blocks[6]);bar.appendChild(history);
- // 點擊紀錄選單以外的畫面時，自動收合；選單內的操作不受影響。
- document.addEventListener('click', (event) => {
-  if (history.open && !history.contains(event.target)) {
-   history.open = false;
-  }
- });
  bar.appendChild(document.getElementById('simExitFullscreenBtn'));
  const top=document.createElement('div');top.id='manageTop';
  const chooser=document.getElementById('wheelSelectDropdown');chooser.setAttribute('aria-label','選擇已有轉盤');top.append(chooser,document.getElementById('openAddWheelModalBtn'));
