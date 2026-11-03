@@ -249,9 +249,13 @@ body > main { max-width:1200px;padding:16px; }
 .fullscreen-active #liveControls .live-field,
 .fullscreen-active #liveControls .live-field:last-child { flex:1 0 104px;min-width:104px; }
 .fullscreen-active #liveControls .wheel-field { flex:1.3 0 124px;min-width:124px; }
-/* 退出全螢幕鈕縮小：圖示變小、按鈕變窄 */
-#liveBar #simExitFullscreenBtn { min-height:32px;height:32px;padding:0 8px;margin-top:0;align-self:end;margin-bottom:8px;justify-content:center;gap:0;font-size:11px; }
-#liveBar #simExitFullscreenBtn i, #liveBar #simExitFullscreenBtn svg { font-size:11px;width:12px;height:12px; }
+/* 退出滿版鈕：只留圖示、不顯示文字，不再擠掉音效欄位 */
+#liveBar #simExitFullscreenBtn {
+  flex:0 0 38px;width:38px;min-width:38px;max-width:38px;min-height:38px;height:38px;
+  padding:0;margin:0 0 8px;gap:0;justify-content:center;font-size:0;
+}
+#liveBar #simExitFullscreenBtn span { display:none !important; }
+#liveBar #simExitFullscreenBtn i { display:inline-block;margin:0;font-size:15px; }
 @media (max-width:639px) {
   body > header { padding:max(8px,env(safe-area-inset-top,0px)) 12px 8px;gap:6px;flex-wrap:wrap; }
   body > header > div:first-child { flex:1 1 100%; }
@@ -292,7 +296,7 @@ body > main { max-width:1200px;padding:16px; }
   }
   #liveBar > button,#liveBar > details { flex:1 1 0;margin:0;align-self:stretch; }
   #liveBar > details > summary,#liveBar > button { min-height:36px;padding:7px 4px;font-size:12px;text-align:center;white-space:nowrap; }
-  #liveBar #simExitFullscreenBtn { margin:0;flex:0 0 34px;min-width:34px;align-self:stretch;height:auto;min-height:36px;padding:0; }
+  #liveBar #simExitFullscreenBtn { margin:0;flex:0 0 36px;width:36px;min-width:36px;max-width:36px;align-self:stretch;height:auto;min-height:36px; }
   #textMenu .text-popover { left:0;right:auto; }
 
   #wheelSection.fullscreen-active {
@@ -1514,6 +1518,10 @@ body > main { max-width:1200px;padding:16px; }
  Array.from(document.getElementById('soundSelect').options).forEach((o,i)=>o.textContent=['預設音效','自訂音效','靜音'][i]);
  bar.appendChild(document.getElementById('uploadAudioBtn'));wheel.append(document.getElementById('customAudioFile'),document.getElementById('audioFileName'));
  const history=document.createElement('details');history.id='historyMenu';const summary=document.createElement('summary');summary.textContent='紀錄 ▾';history.append(summary,blocks[6]);bar.appendChild(history);
+ // 點擊紀錄選單以外的畫面時，自動收合；選單內的操作不受影響。
+ document.addEventListener("click", (event) => {
+  if (history.open && !history.contains(event.target)) history.open = false;
+ });
  bar.appendChild(document.getElementById('simExitFullscreenBtn'));
  const top=document.createElement('div');top.id='manageTop';
  const chooser=document.getElementById('wheelSelectDropdown');chooser.setAttribute('aria-label','選擇已有轉盤');top.append(chooser,document.getElementById('openAddWheelModalBtn'));
