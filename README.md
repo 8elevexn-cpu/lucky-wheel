@@ -40,3 +40,51 @@
 - 請定期在「轉盤管理」按**匯出**備份；匯出檔也包含各轉盤的中獎紀錄。
 - 在 App 內匯出時，檔案會存到手機的「下載」資料夾。
 
+## 網頁版（GitHub Pages）
+
+1. 把本專案內容推送到儲存庫的 `main` 分支。
+2. 到 **Settings → Pages**，Source 選 **GitHub Actions**。
+3. 每次推送會自動部署，網址為 `https://<帳號>.github.io/<儲存庫名>/`。
+
+根目錄的 `index.html` 是網頁版；`app/src/main/assets/index.html` 是打包進 APK 的同一份，修改畫面時**兩邊都要換**。
+
+## Android App（APK）
+
+- 專案內含 Android 專案與 GitHub Actions 自動編譯設定（`.github/workflows/build-apk.yml`）。
+- 推送後，到 **Actions** 等「Build APK」完成：
+  - 到儲存庫首頁的 **Releases**，下載 `lucky-wheel-v1.0.6.apk`
+  - 或在該次執行頁面最下方的 **Artifacts** 下載
+- 安裝時如被擋下，請在手機設定允許該瀏覽器「安裝未知的應用程式」。
+
+### 簽章金鑰（要能覆蓋安裝舊版才需要）
+
+到儲存庫 **Settings → Secrets and variables → Actions** 新增：
+
+| 名稱 | 內容 |
+|---|---|
+| `KEYSTORE_BASE64` | 金鑰檔（.jks）轉成的 Base64 文字 |
+| `KEYSTORE_PASSWORD` | 金鑰庫密碼 |
+| `KEY_ALIAS` | 金鑰別名（`lucky-wheel`） |
+| `KEY_PASSWORD` | 金鑰密碼（與金鑰庫密碼相同可不填） |
+
+- 沒設定時仍可編譯，但會用 debug 金鑰簽名，**無法覆蓋已用正式金鑰安裝的版本**。
+- 編譯記錄會顯示簽章憑證 SHA-256，請與舊版比對確認一致。
+- **金鑰檔與密碼絕對不要放進儲存庫**（`.gitignore` 已排除 `*.jks`、`*.keystore`、`signing-password*.txt`）。
+- 版本更新時，請同步提高 `app/build.gradle` 的 `versionCode`，手機才會視為可更新。
+
+## 專案結構
+
+```
+index.html                     網頁版（單一檔案）
+app/                           Android 專案（WebView 包裝）
+  src/main/assets/index.html   APK 內使用的網頁
+  src/main/java/tw/lucky/wheel/MainActivity.java
+.github/workflows/
+  pages.yml                    部署 GitHub Pages
+  build-apk.yml                編譯 APK 並發佈到 Releases
+```
+
+## 注意事項
+
+- 轉盤頁面的樣式與字型需要網路連線載入。
+- 在 Android 15 以上，App 會自動讓畫面避開狀態列與導覽列。
