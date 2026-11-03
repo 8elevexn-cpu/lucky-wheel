@@ -1,21 +1,90 @@
-# 幸運轉盤 APK 專案
+# 幸運轉盤｜炫光視覺與自訂多轉盤抽獎系統
 
-- 套件名稱：`tw.lucky.wheel`　版本：versionCode 6／1.0.5
-- 網頁內容在 `app/src/main/assets/index.html`，之後要改畫面，換掉這個檔案再推上去即可。
-- 推上 `main` 分支後，GitHub Actions 會自動編譯，完成後到 **Actions → 最新一次 → Artifacts** 下載 `lucky-wheel-apk`。
+**中文** ｜ [English](README.en.md)
 
-## 用原金鑰簽名（才能覆蓋安裝舊版）
-到儲存庫 **Settings → Secrets and variables → Actions → New repository secret** 新增：
+單一 HTML 檔的抽獎轉盤，可在瀏覽器直接使用，也可以打包成 Android App（APK）。
+目前版本：**1.0.6**（APK versionCode 7，套件名稱 `tw.lucky.wheel`）
+
+---
+
+## 功能特色
+
+- **多個轉盤**：可建立、切換、匯出與匯入任意數量的轉盤，每個轉盤各自保存項目與設定。
+- **每個轉盤各自保存中獎紀錄**：切換轉盤就顯示該轉盤的紀錄與「最新抽中獎項」；「清除紀錄」只清除目前轉盤；關閉重開後仍會保留並接續。
+- **五種配色主題**：經典嘉年華、皇家金奢、賽博霓虹、夢幻馬卡龍、森林自然。
+- **兩種抽獎規則**
+  - 保留中獎者：抽出後項目繼續留在轉盤上
+  - 自動移除中獎者：抽中後立刻從轉盤移除
+- **音效**：預設合成音效、可載入自訂音效（MP3／WAV）、靜音模式，並可「試聽」。
+- **文字設定**：轉盤文字的大小（自動、18～64 或自訂）與顏色皆可調整；指定大小時會照指定大小顯示，名稱過長則以「…」縮短。
+- **全螢幕模式**：適合投影或現場抽獎。
+- **發光的「開始抽獎」按鈕**，抽獎期間會暫停發光並停用。
+- **小手機版面最佳化**：設定列精簡成一列，並避開狀態列與導覽列。
+- 新增轉盤時可選範本：空白、晚餐吃什麼？、真心話大冒險、幸運數字（1～10）。
+
+## 使用方式
+
+1. 打開網頁（或 App），進入「**轉盤**」頁籤，按「**開始抽獎**」。
+2. 上方可快速切換轉盤、配色、抽獎方式與音效。
+3. 到「**轉盤管理**」頁籤可以：
+   - 新增轉盤、修改轉盤名稱、配色主題與抽獎規則
+   - 編輯轉盤項目（**一行一個**），按「儲存並更新轉盤內容」
+   - 設定音效
+   - **匯出／匯入**全部轉盤備份
+4. 「紀錄」可查看目前轉盤的中獎歷史，並可清除。
+
+## 資料保存與備份
+
+- 轉盤與中獎紀錄存放在**該瀏覽器或 App 的本機儲存空間**，不會上傳到任何伺服器。
+- 清除瀏覽器資料、換瀏覽器、換手機、或**解除安裝 App** 都會讓資料消失。
+- 請定期在「轉盤管理」按**匯出**備份；匯出檔也包含各轉盤的中獎紀錄。
+- 在 App 內匯出時，檔案會存到手機的「下載」資料夾。
+
+## 網頁版（GitHub Pages）
+
+1. 把本專案內容推送到儲存庫的 `main` 分支。
+2. 到 **Settings → Pages**，Source 選 **GitHub Actions**。
+3. 每次推送會自動部署，網址為 `https://<帳號>.github.io/<儲存庫名>/`。
+
+根目錄的 `index.html` 是網頁版；`app/src/main/assets/index.html` 是打包進 APK 的同一份，修改畫面時**兩邊都要換**。
+
+## Android App（APK）
+
+- 專案內含 Android 專案與 GitHub Actions 自動編譯設定（`.github/workflows/build-apk.yml`）。
+- 推送後，到 **Actions** 等「Build APK」完成：
+  - 到儲存庫首頁的 **Releases**，下載 `lucky-wheel-v1.0.6.apk`
+  - 或在該次執行頁面最下方的 **Artifacts** 下載
+- 安裝時如被擋下，請在手機設定允許該瀏覽器「安裝未知的應用程式」。
+
+### 簽章金鑰（要能覆蓋安裝舊版才需要）
+
+到儲存庫 **Settings → Secrets and variables → Actions** 新增：
 
 | 名稱 | 內容 |
 |---|---|
-| KEYSTORE_BASE64 | 金鑰檔轉成的 Base64 文字（用附的「金鑰轉Base64工具.html」產生） |
-| KEYSTORE_PASSWORD | 金鑰庫密碼 |
-| KEY_ALIAS | `lucky-wheel` |
-| KEY_PASSWORD | 金鑰密碼（若與金鑰庫密碼相同可不填） |
+| `KEYSTORE_BASE64` | 金鑰檔（.jks）轉成的 Base64 文字 |
+| `KEYSTORE_PASSWORD` | 金鑰庫密碼 |
+| `KEY_ALIAS` | 金鑰別名（`lucky-wheel`） |
+| `KEY_PASSWORD` | 金鑰密碼（與金鑰庫密碼相同可不填） |
 
-沒設定時仍可編譯，但會用 debug 金鑰，無法覆蓋舊版。
-**金鑰檔與密碼絕對不要放進儲存庫。**
+- 沒設定時仍可編譯，但會用 debug 金鑰簽名，**無法覆蓋已用正式金鑰安裝的版本**。
+- 編譯記錄會顯示簽章憑證 SHA-256，請與舊版比對確認一致。
+- **金鑰檔與密碼絕對不要放進儲存庫**（`.gitignore` 已排除 `*.jks`、`*.keystore`、`signing-password*.txt`）。
+- 版本更新時，請同步提高 `app/build.gradle` 的 `versionCode`，手機才會視為可更新。
 
-## 網頁版
-根目錄的 `index.html` 就是網頁版（GitHub Pages）；`app/src/main/assets/index.html` 是打包進 APK 的同一份，改畫面時兩邊都要換。
+## 專案結構
+
+```
+index.html                     網頁版（單一檔案）
+app/                           Android 專案（WebView 包裝）
+  src/main/assets/index.html   APK 內使用的網頁
+  src/main/java/tw/lucky/wheel/MainActivity.java
+.github/workflows/
+  pages.yml                    部署 GitHub Pages
+  build-apk.yml                編譯 APK 並發佈到 Releases
+```
+
+## 注意事項
+
+- 轉盤頁面的樣式與字型需要網路連線載入。
+- 在 Android 15 以上，App 會自動讓畫面避開狀態列與導覽列。
