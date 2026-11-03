@@ -7,6 +7,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -46,18 +50,34 @@ jobs:
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BT/apksigner" verify --print-certs app/build/outputs/apk/release/*.apk | grep -i "SHA-256" || true
 
-      - name: 重新命名
-        run: cp app/build/outputs/apk/release/app-release.apk lucky-wheel-v1.0.6.apk
+      - name: 重新命名（版本號取自 app/build.gradle）
+        run: |
+          VERSION=$(sed -n "s/.*versionName *['\"]\([^'\"]*\)['\"].*/\1/p" app/build.gradle)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "lucky-wheel-v${VERSION}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
           name: lucky-wheel-apk
-          path: lucky-wheel-v1.0.6.apk
+          path: lucky-wheel-v*.apk
 
-      - name: 發佈到 Releases（可直接下載 APK）
+      - name: 發佈到 Releases（同一版本只留一個 Release，重跑會覆蓋 APK）
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "apk-${{ github.run_number }}" lucky-wheel-v1.0.6.apk \
-            --title "幸運轉盤 APK #${{ github.run_number }}" \
-            --notes "自動編譯的 APK，點下方 lucky-wheel-v1.0.6.apk 即可下載安裝。"
+          TAG="v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "lucky-wheel-v${VERSION}.apk" --clobber
+          else
+            gh release create "$TAG" "lucky-wheel-v${VERSION}.apk" \
+              --title "幸運轉盤 v${VERSION}" \
+              --notes "自動編譯的 APK，點下方 lucky-wheel-v${VERSION}.apk 即可下載安裝。"
+          fi
+
+      - name: 清除舊的重複 Release（apk-數字）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 300 --json tagName --jq ".[].tagName" | grep -E "^apk-[0-9]+$" | while read t; do
+            gh release delete "$t" --cleanup-tag --yes || true
+          done
